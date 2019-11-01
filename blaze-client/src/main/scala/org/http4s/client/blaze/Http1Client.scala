@@ -3,6 +3,7 @@ package client
 package blaze
 
 import cats.effect._
+import cats.implicits._
 import fs2.Stream
 
 /** Create a HTTP1 client which will attempt to recycle connections */
@@ -33,5 +34,26 @@ object Http1Client {
     )
     BlazeClient(pool, config, pool.shutdown())
   }
+
+  def conceff[F[_]](config: BlazeClientConfig = BlazeClientConfig.defaultConfig)(
+    implicit F: ConcurrentEffect[F]): F[Client[F]] = {
+    val http1: ConnectionBuilder[F, BlazeConnection[F]] = Http1Support(config)
+    ConnectionManager
+      .pool(
+        builder = http1,
+        maxTotal = config.maxTotalConnections,
+        maxWaitQueueLimit = config.maxWaitQueueLimit,
+        maxConnectionsPerRequestKey = config.maxConnectionsPerRequestKey,
+        responseHeaderTimeout = config.responseHeaderTimeout,
+        requestTimeout = config.requestTimeout,
+        executionContext = config.executionContext
+      )
+      .map(pool => BlazeClient(pool, config, pool.shutdown()))
+  }
+
+  def streamCE[F[_]: ConcurrentEffect](
+      config: BlazeClientConfig = BlazeClientConfig.defaultConfig): Stream[F, Client[F]] =
+    Stream.bracket(conceff(config))(_.shutdown)
+
 
 }
