@@ -1,15 +1,14 @@
 package org.http4s
 
-import cats.ApplicativeError
+import cats.effect.IO
 import fs2._
 import java.nio.{ByteBuffer, CharBuffer}
 import java.nio.charset.StandardCharsets
-import scala.concurrent.ExecutionContextExecutor
 
 package object util {
   private val utf8Bom: Chunk[Byte] = Chunk(0xef.toByte, 0xbb.toByte, 0xbf.toByte)
 
-  def decode[F[_]](charset: Charset): Pipe[F, Byte, String] = {
+  def decode(charset: Charset): Pipe[IO, Byte, String] = {
     val decoder = charset.nioCharset.newDecoder
     val maxCharsPerByte = math.ceil(decoder.maxCharsPerByte().toDouble).toInt
     val avgBytesPerChar = math.ceil(1.0 / decoder.averageCharsPerByte().toDouble).toInt
@@ -40,27 +39,25 @@ package object util {
     }
   }
 
-  private def skipByteOrderMark[F[_]](chunk: Chunk[Byte]): Chunk[Byte] =
+  private def skipByteOrderMark(chunk: Chunk[Byte]): Chunk[Byte] =
     if (chunk.size >= 3 && chunk.take(3) == utf8Bom) {
       chunk.drop(3)
     } else chunk
 
   /** Converts ASCII encoded byte stream to a stream of `String`. */
-  private[http4s] def asciiDecode[F[_]](
-      implicit F: ApplicativeError[F, Throwable]): Pipe[F, Byte, String] =
+  private[http4s] def asciiDecode: Pipe[IO, Byte, String] =
     _.chunks.through(asciiDecodeC)
 
   private def asciiCheck(b: Byte) = 0x80 & b
 
   /** Converts ASCII encoded `Chunk[Byte]` inputs to `String`. */
-  private[http4s] def asciiDecodeC[F[_]](
-      implicit F: ApplicativeError[F, Throwable]): Pipe[F, Chunk[Byte], String] = { in =>
-    def tailRecAsciiCheck(i: Int, bytes: Array[Byte]): Stream[F, String] =
+  private[http4s] def asciiDecodeC: Pipe[IO, Chunk[Byte], String] = { in =>
+    def tailRecAsciiCheck(i: Int, bytes: Array[Byte]): Stream[IO, String] =
       if (i == bytes.length)
         Stream.emit(new String(bytes, StandardCharsets.US_ASCII))
       else {
         if (asciiCheck(bytes(i)) == 0x80) {
-          Stream.raiseError[F](
+          Stream.raiseError[IO](
             new IllegalArgumentException("byte stream is not encodable as ascii bytes"))
         } else {
           tailRecAsciiCheck(i + 1, bytes)
@@ -74,20 +71,6 @@ package object util {
   def bug(message: String): AssertionError =
     new AssertionError(
       s"This is a bug. Please report to https://github.com/http4s/http4s/issues: ${message}")
-
-  @deprecated("Moved to org.http4s.syntax.StringOps", "0.16")
-  type CaseInsensitiveStringOps = org.http4s.syntax.StringOps
-
-  @deprecated("Moved to org.http4s.syntax.StringSyntax", "0.16")
-  type CaseInsensitiveStringSyntax = org.http4s.syntax.StringSyntax
-
-  @deprecated("Moved to org.http4s.syntax.NonEmptyListSyntax", "0.18.0-M5")
-  type NonEmptyListSyntax = org.http4s.syntax.NonEmptyListSyntax
-
-  @deprecated(
-    "Moved to org.http4s.execution.trampoline, is now merely a ExecutionContextExecutor.",
-    "0.18.0-M2")
-  val TrampolineExecutionContext: ExecutionContextExecutor = execution.trampoline
 
   /* This is nearly identical to the hashCode of java.lang.String, but converting
    * to lower case on the fly to avoid copying `value`'s character storage.

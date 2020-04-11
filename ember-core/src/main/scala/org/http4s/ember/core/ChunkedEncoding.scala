@@ -17,7 +17,7 @@ private[ember] object ChunkedEncoding {
       implicit F: ApplicativeError[F, Throwable]): Pipe[F, Byte, Byte] = {
     // on left reading the header of chunk (acting as buffer)
     // on right reading the chunk itself, and storing remaining bytes of the chunk
-    def go(expect: Either[ByteVector, Long], in: Stream[F, Byte]): Pull[F, Byte, Unit] =
+    def go(expect: Either[ByteVector, Long], in: Stream[IO, Byte]): Pull[IO, Byte, Unit] =
       in.pull.uncons.flatMap {
         case None => Pull.done
         case Some((h, tl)) =>

@@ -143,7 +143,7 @@ final class EmberClientBuilder[F[_]: Concurrent: Timer: ContextShift] private (
                 case ExitCase.Canceled => Sync[F].unit
                 case ExitCase.Error(_) => Sync[F].unit
               }))
-          response <- Resource.make[F, Response[F]](responseResource.pure[F])(resp =>
+          response <- Resource.make[F, Response](responseResource.pure[F])(resp =>
             managed.canBeReused.get.flatMap {
               case Reusable.Reuse => resp.body.compile.drain.attempt.void
               case Reusable.DontReuse => Sync[F].unit

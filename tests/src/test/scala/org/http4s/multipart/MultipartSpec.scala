@@ -118,7 +118,7 @@ Content-Type: application/pdf
         val header = Headers.of(
           `Content-Type`(
             MediaType.multipartType("form-data", Some("----WebKitFormBoundarycaZFo8IAKVROTEeD"))))
-        val request = Request[IO](
+        val request = Request(
           method = Method.POST,
           uri = url,
           body = Stream.emit(body).covary[IO].through(text.utf8Encode),
@@ -146,7 +146,7 @@ I am a big moose
         val header = Headers.of(
           `Content-Type`(
             MediaType.multipartType("form-data", Some("bQskVplbbxbC2JO8ibZ7KwmEe3AJLx_Olz"))))
-        val request = Request[IO](
+        val request = Request(
           method = Method.POST,
           uri = url,
           body = Stream.emit(body).through(text.utf8Encode),
@@ -185,7 +185,7 @@ I am a big moose
   multipartSpec("with mixed decoder")(MultipartDecoder.mixedMultipart[IO](Http4sSpec.TestBlocker))
 
   "Part" >> {
-    def testPart[F[_]] = Part[F](Headers.empty, EmptyBody)
+    def testPart[F[_]] = Part(Headers.empty, EmptyBody)
     "covary" should {
       "disallow unrelated effects" in {
         illTyped("testPart[Option].covary[IO]")

@@ -13,5 +13,5 @@ import cats.effect.Sync
 trait CacheStrategy[F[_]] {
 
   /** Performs the caching operations */
-  def cache(uriPath: String, resp: Response[F])(implicit F: Sync[F]): F[Response[F]]
+  def cache(uriPath: String, resp: Response)(implicit F: Sync[F]): F[Response]
 }

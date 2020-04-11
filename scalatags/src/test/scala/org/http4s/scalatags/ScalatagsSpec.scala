@@ -32,7 +32,7 @@ class ScalatagsSpec extends Http4sSpec {
     }
 
     "render the body" in {
-      val resp = Response[IO](Ok).withEntity(testBody())
+      val resp = Response(Ok).withEntity(testBody())
       EntityDecoder.text[IO].decode(resp, strict = false).value.unsafeRunSync must beRight(
         "<div><p>this is my testBody</p></div>")
     }

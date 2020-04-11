@@ -11,17 +11,17 @@ import org.http4s.server.middleware.VirtualHost.exact
 
 class ClientSpec extends Http4sSpec with Http4sDsl[IO] {
   val app = HttpApp[IO] {
-    case r => Response[IO](Ok).withEntity(r.body).pure[IO]
+    case r => Response(Ok).withEntity(r.body).pure[IO]
   }
   val client: Client[IO] = Client.fromHttpApp(app)
 
   "mock client" should {
     "read body before dispose" in {
-      client.expect[String](Request[IO](POST).withEntity("foo")).unsafeRunSync() must_== "foo"
+      client.expect[String](Request(POST).withEntity("foo")).unsafeRunSync() must_== "foo"
     }
 
     "fail to read body after dispose" in {
-      Request[IO](POST)
+      Request(POST)
         .withEntity("foo")
         .pure[IO]
         .flatMap { req =>
@@ -40,7 +40,7 @@ class ClientSpec extends Http4sSpec with Http4sDsl[IO] {
       })
 
       hostClient
-        .expect[String](Request[IO](GET, Uri.uri("https://http4s.org/")))
+        .expect[String](Request(GET, Uri.uri("https://http4s.org/")))
         .unsafeRunSync() must_== "http4s.org"
     }
 
@@ -50,7 +50,7 @@ class ClientSpec extends Http4sSpec with Http4sDsl[IO] {
       })
 
       hostClient
-        .expect[String](Request[IO](GET, Uri.uri("https://http4s.org:1983/")))
+        .expect[String](Request(GET, Uri.uri("https://http4s.org:1983/")))
         .unsafeRunSync() must_== "http4s.org:1983"
     }
 
@@ -62,7 +62,7 @@ class ClientSpec extends Http4sSpec with Http4sDsl[IO] {
       val hostClient = Client.fromHttpApp(VirtualHost(exact(routes, "http4s.org")).orNotFound)
 
       hostClient
-        .expect[String](Request[IO](GET, Uri.uri("https://http4s.org/")))
+        .expect[String](Request(GET, Uri.uri("https://http4s.org/")))
         .unsafeRunSync() must_== "http4s.org"
     }
   }

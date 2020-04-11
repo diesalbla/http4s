@@ -33,7 +33,7 @@ object GZip {
       }
     }
 
-  def defaultIsZippable[F[_]](resp: Response[F]): Boolean = {
+  def defaultIsZippable[F[_]](resp: Response): Boolean = {
     val contentType = resp.headers.get(`Content-Type`)
     resp.headers.get(`Content-Encoding`).isEmpty &&
     (contentType.isEmpty || contentType.get.mediaType.compressible ||
@@ -45,10 +45,10 @@ object GZip {
       ContentCoding.`x-gzip`)
 
   private def zipOrPass[F[_]: Functor](
-      response: Response[F],
+      response: Response,
       bufferSize: Int,
       level: Int,
-      isZippable: Response[F] => Boolean): Response[F] =
+      isZippable: Response => Boolean): Response =
     response match {
       case resp if isZippable(resp) => zipResponse(bufferSize, level, resp)
       case resp => resp // Don't touch it, Content-Encoding already set
@@ -58,7 +58,7 @@ object GZip {
   private def zipResponse[F[_]: Functor](
       bufferSize: Int,
       level: Int,
-      resp: Response[F]): Response[F] = {
+      resp: Response): Response = {
     logger.trace("GZip middleware encoding content")
     // Need to add the Gzip header and trailer
     val trailerGen = new TrailerGen()

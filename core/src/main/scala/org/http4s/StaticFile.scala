@@ -1,8 +1,7 @@
 package org.http4s
 
 import cats.Semigroup
-import cats.data.OptionT
-import cats.effect.{Blocker, ContextShift, IO, Sync}
+import cats.effect.{Blocker, ContextShift, IO}
 import cats.implicits._
 import fs2.Stream
 import fs2.io._
@@ -19,18 +18,21 @@ object StaticFile {
 
   val DefaultBufferSize = 10240
 
-  def fromString[F[_]: Sync: ContextShift](
-      url: String,
-      blocker: Blocker,
-      req: Option[Request[F]] = None): OptionT[F, Response[F]] =
+  def fromString(
+    url: String,
+    blocker: Blocker,
+    req: Option[Request] = None)(implicit cs: ContextShift[IO]
+  ): IO[Option[Response]] =
     fromFile(new File(url), blocker, req)
 
-  def fromResource[F[_]: Sync: ContextShift](
-      name: String,
-      blocker: Blocker,
-      req: Option[Request[F]] = None,
-      preferGzipped: Boolean = false,
-      classloader: Option[ClassLoader] = None): OptionT[F, Response[F]] = {
+  def fromResource(
+    name: String,
+    blocker: Blocker,
+    req: Option[Request] = None,
+    preferGzipped: Boolean = false,
+    classloader: Option[ClassLoader] = None)(
+    implicit cs: ContextShift[IO]
+  ): IO[Option[Response]] = {
     val loader = classloader.getOrElse(getClass.getClassLoader)
 
     val tryGzipped = preferGzipped && req.flatMap(_.headers.get(`Accept-Encoding`)).exists {
@@ -41,27 +43,27 @@ object StaticFile {
     val normalizedName = name.split("/").filter(_.nonEmpty).mkString("/")
 
     def getResource(name: String) =
-      OptionT(Sync[F].delay(Option(loader.getResource(name))))
+      IO.delay(Option(loader.getResource(name)))
 
-    val gzUrl: OptionT[F, URL] =
-      if (tryGzipped) getResource(normalizedName + ".gz") else OptionT.none
+    val gzUrl: IO[Option[URL]] =
+      if (tryGzipped) getResource(normalizedName + ".gz") else IO.pure(None)
 
-    gzUrl
-      .flatMap { url =>
+    gzUrl.flatMap {
+      case Some(url) =>
         // Guess content type from the name without ".gz"
         val contentType = nameToContentType(normalizedName)
         val headers = `Content-Encoding`(ContentCoding.gzip) :: contentType.toList
+        fromURL(url, blocker, req).map(_.removeHeader(`Content-Type`).putHeaders(headers: _*)).map(Some(_))
 
-        fromURL(url, blocker, req).map(_.removeHeader(`Content-Type`).putHeaders(headers: _*))
+      case None => getResource(normalizedName).flatMap {
+        case None => IO.pure(None)
+        case Some(x) => fromURL(x, blocker, req).map(Some(_))
       }
-      .orElse(getResource(normalizedName)
-        .flatMap(fromURL(_, blocker, req)))
+    }
   }
 
-  def fromURL[F[_]](url: URL, blocker: Blocker, req: Option[Request[F]] = None)(
-      implicit F: Sync[F],
-      cs: ContextShift[F]): OptionT[F, Response[F]] =
-    OptionT.liftF(F.delay {
+  def fromURL(url: URL, blocker: Blocker, req: Option[Request] = None)(implicit cs: ContextShift[IO]): IO[Response] =
+    IO.delay {
       val urlConn = url.openConnection
       val lastmod = HttpDate.fromEpochSecond(urlConn.getLastModified / 1000).toOption
       val ifModifiedSince = req.flatMap(_.headers.get(`If-Modified-Since`))
@@ -78,53 +80,57 @@ object StaticFile {
 
         Response(
           headers = headers,
-          body = readInputStream[F](F.delay(url.openStream), DefaultBufferSize, blocker)
+          body = readInputStream(IO.delay(url.openStream), DefaultBufferSize, blocker)
         )
       } else {
         urlConn.getInputStream.close()
         Response(NotModified)
       }
-    })
+    }
 
-  def calcETag[F[_]: Sync]: File => F[String] =
-    f =>
-      Sync[F].delay(
+  def calcETag: File => IO[String] =
+    f => IO.delay(
         if (f.isFile) s"${f.lastModified().toHexString}-${f.length().toHexString}" else "")
 
-  def fromFile[F[_]: Sync: ContextShift](
-      f: File,
-      blocker: Blocker,
-      req: Option[Request[F]] = None): OptionT[F, Response[F]] =
-    fromFile(f, DefaultBufferSize, blocker, req, calcETag[F])
+  def fromFile(
+    f: File,
+    blocker: Blocker,
+    req: Option[Request] = None
+  )(implicit cs: ContextShift[IO]
+  ): IO[Option[Response]] =
+    fromFile(f, DefaultBufferSize, blocker, req, calcETag)
 
-  def fromFile[F[_]: Sync: ContextShift](
+  def fromFile(
       f: File,
       blocker: Blocker,
-      req: Option[Request[F]],
-      etagCalculator: File => F[String]): OptionT[F, Response[F]] =
+      req: Option[Request],
+    etagCalculator: File => IO[String])(
+    implicit cs: ContextShift[IO]
+  ): IO[Option[Response]] =
     fromFile(f, DefaultBufferSize, blocker, req, etagCalculator)
 
-  def fromFile[F[_]: Sync: ContextShift](
+  def fromFile(
       f: File,
       buffsize: Int,
       blocker: Blocker,
-      req: Option[Request[F]],
-      etagCalculator: File => F[String]): OptionT[F, Response[F]] =
+      req: Option[Request],
+    etagCalculator: File => IO[String])(implicit cs: ContextShift[IO]
+  ): IO[Option[Response]] =
     fromFile(f, 0, f.length(), buffsize, blocker, req, etagCalculator)
 
-  def fromFile[F[_]](
+  def fromFile(
       f: File,
       start: Long,
       end: Long,
       buffsize: Int,
       blocker: Blocker,
-      req: Option[Request[F]],
-      etagCalculator: File => F[String])(
-      implicit F: Sync[F],
-      cs: ContextShift[F]): OptionT[F, Response[F]] =
-    OptionT(for {
+      req: Option[Request],
+      etagCalculator: File => IO[String])(
+    implicit cs: ContextShift[IO]
+  ): IO[Option[Response]] =
+    for {
       etagCalc <- etagCalculator(f).map(et => ETag(et))
-      res <- F.delay {
+      res <- IO.delay {
         if (f.isFile) {
           require(
             start >= 0 && end >= start && buffsize > 0,
@@ -134,8 +140,8 @@ object StaticFile {
 
           notModified(req, etagCalc, lastModified).orElse {
             val (body, contentLength) =
-              if (f.length() < end) (Stream.empty.covary[F], 0L)
-              else (fileToBody[F](f, start, end, blocker), end - start)
+              if (f.length() < end) (Stream.empty.covary[IO], 0L)
+              else (fileToBody(f, start, end, blocker), end - start)
 
             val contentType = nameToContentType(f.getName)
             val hs = lastModified.map(lm => `Last-Modified`(lm)).toList :::
@@ -155,22 +161,22 @@ object StaticFile {
           None
         }
       }
-    } yield res)
+    } yield res
 
-  private def notModified[F[_]](
-      req: Option[Request[F]],
+  private def notModified(
+      req: Option[Request],
       etagCalc: ETag,
-      lastModified: Option[HttpDate]): Option[Response[F]] = {
+      lastModified: Option[HttpDate]): Option[Response] = {
     implicit val conjunction = new Semigroup[Boolean] {
       def combine(x: Boolean, y: Boolean): Boolean = x && y
     }
 
     List(etagMatch(req, etagCalc), notModifiedSince(req, lastModified)).combineAll
       .filter(identity)
-      .map(_ => Response[F](NotModified))
+      .map(_ => Response(NotModified))
   }
 
-  private def etagMatch[F[_]](req: Option[Request[F]], etagCalc: ETag) =
+  private def etagMatch(req: Option[Request], etagCalc: ETag) =
     for {
       r <- req
       etagHeader <- r.headers.get(`If-None-Match`)
@@ -179,7 +185,7 @@ object StaticFile {
         s"Matches `If-None-Match`: $etagMatch Previous ETag: ${etagHeader.value}, New ETag: $etagCalc")
     } yield etagMatch
 
-  private def notModifiedSince[F[_]](req: Option[Request[F]], lastModified: Option[HttpDate]) =
+  private def notModifiedSince(req: Option[Request], lastModified: Option[HttpDate]) =
     for {
       r <- req
       h <- r.headers.get(`If-Modified-Since`)
@@ -189,13 +195,13 @@ object StaticFile {
         s"Matches `If-Modified-Since`: $notModified. Request age: ${h.date}, Modified: $lm")
     } yield notModified
 
-  private def fileToBody[F[_]: Sync: ContextShift](
+  private def fileToBody(
       f: File,
       start: Long,
       end: Long,
       blocker: Blocker
-  ): EntityBody[F] =
-    readRange[F](f.toPath, blocker, DefaultBufferSize, start, end)
+  )(implicit cs: ContextShift[IO]): EntityBody =
+    readRange[IO](f.toPath, blocker, DefaultBufferSize, start, end)
 
   private def nameToContentType(name: String): Option[`Content-Type`] =
     name.lastIndexOf('.') match {

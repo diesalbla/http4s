@@ -24,7 +24,7 @@ class UrlFormSpec extends Http4sSpec {
     "entityDecoder . entityEncoder == right" in prop { (urlForm: UrlForm) =>
       DecodeResult
         .success(
-          Request[IO]()
+          Request()
             .withEntity(urlForm)(UrlForm.entityEncoder(charset))
             .pure[IO])
         .flatMap { req =>

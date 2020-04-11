@@ -11,7 +11,7 @@ import org.log4s.getLogger
 import scala.concurrent._
 
 private[http4s] trait Http1Writer[F[_]] extends EntityBodyWriter[F] {
-  final def write(headerWriter: StringWriter, body: EntityBody[F]): F[Boolean] =
+  final def write(headerWriter: StringWriter, body: EntityBody): F[Boolean] =
     fromFuture(F.delay(writeHeaders(headerWriter))).attempt.flatMap {
       case Right(()) =>
         writeEntityBody(body)

@@ -7,5 +7,5 @@ import java.util.concurrent.TimeoutException
 import org.http4s.blaze.pipeline.TailStage
 
 private trait BlazeConnection[F[_]] extends TailStage[ByteBuffer] with Connection[F] {
-  def runRequest(req: Request[F], idleTimeout: F[TimeoutException]): F[Response[F]]
+  def runRequest(req: Request, idleTimeout: F[TimeoutException]): F[Response]
 }

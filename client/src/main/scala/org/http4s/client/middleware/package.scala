@@ -11,5 +11,5 @@ package object middleware {
     * the request will be retried.
     */
   type RetryPolicy[F[_]] =
-    (Request[F], Either[Throwable, Response[F]], Int) => Option[FiniteDuration]
+    (Request, Either[Throwable, Response], Int) => Option[FiniteDuration]
 }

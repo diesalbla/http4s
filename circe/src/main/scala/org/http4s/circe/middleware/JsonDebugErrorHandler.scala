@@ -17,10 +17,10 @@ object JsonDebugErrorHandler {
     org.log4s.getLogger("org.http4s.circe.middleware.jsondebugerrorhandler.service-errors")
 
   // Can be parametric on my other PR is merged.
-  def apply[F[_]: Sync, G[_]](
-      service: Kleisli[F, Request[G], Response[G]],
+  def apply[G[_]](
+      service: Request => IO[Response],
       redactWhen: CaseInsensitiveString => Boolean = Headers.SensitiveHeaders.contains
-  ): Kleisli[F, Request[G], Response[G]] = Kleisli { req =>
+  ): (Request => IO[Response] = { (req: Request) =>
     import cats.syntax.applicative._
     import cats.syntax.applicativeError._
     implicit def entEnc[M[_], N[_]] = JsonErrorHandlerResponse.entEnc[M, N](redactWhen)
@@ -33,7 +33,7 @@ object JsonDebugErrorHandler {
             s"""Message failure handling request: ${req.method} ${req.pathInfo} from ${req.remoteAddr
               .getOrElse("<unknown>")}""")
           val firstResp = mf.toHttpResponse[G](req.httpVersion)
-          Response[G](
+          Response(
             status = firstResp.status,
             httpVersion = firstResp.httpVersion,
             headers = firstResp.headers.redactSensitive(redactWhen)
@@ -43,7 +43,7 @@ object JsonDebugErrorHandler {
             s"""Error servicing request: ${req.method} ${req.pathInfo} from ${req.remoteAddr
               .getOrElse("<unknown>")}"""
           )
-          Response[G](
+          Response(
             Status.InternalServerError,
             req.httpVersion,
             Headers(
@@ -55,31 +55,23 @@ object JsonDebugErrorHandler {
       }
   }
 
-  private final case class JsonErrorHandlerResponse[F[_]](
-      req: Request[F],
-      caught: Throwable
-  )
+  private final case class JsonErrorHandlerResponse(req: Request, caught: Throwable)
+
   private object JsonErrorHandlerResponse {
-    def entEnc[F[_], G[_]](
-        redactWhen: CaseInsensitiveString => Boolean
-    ): EntityEncoder[F, JsonErrorHandlerResponse[G]] =
-      jsonEncoderOf(
-        encoder(redactWhen)
-      )
-    def encoder[F[_]](
-        redactWhen: CaseInsensitiveString => Boolean
-    ): Encoder[JsonErrorHandlerResponse[F]] = new Encoder[JsonErrorHandlerResponse[F]] {
-      def apply(a: JsonErrorHandlerResponse[F]): Json =
-        Json.obj(
-          "request" -> encodeRequest(a.req, redactWhen),
-          "throwable" -> encodeThrowable(a.caught)
-        )
-    }
+    def entEnc[F[_], G[_]](redactWhen: CaseInsensitiveString => Boolean): EntityEncoder[JsonErrorHandlerResponse[G]] =
+      jsonEncoderOf(encoder(redactWhen))
+
+    def encoder(redactWhen: CaseInsensitiveString => Boolean): Encoder[JsonErrorHandlerResponse] =
+      new Encoder[JsonErrorHandlerResponse] {
+        def apply(a: JsonErrorHandlerResponse): Json =
+          Json.obj(
+            "request" -> encodeRequest(a.req, redactWhen),
+            "throwable" -> encodeThrowable(a.caught)
+          )
+      }
   }
 
-  private def encodeRequest[F[_]](
-      req: Request[F],
-      redactWhen: CaseInsensitiveString => Boolean): Json =
+  private def encodeRequest(req: Request, redactWhen: CaseInsensitiveString => Boolean): Json =
     Json
       .obj(
         "method" -> req.method.name.asJson,

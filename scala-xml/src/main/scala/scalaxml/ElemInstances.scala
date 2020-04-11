@@ -16,9 +16,9 @@ trait ElemInstances {
   protected def saxFactory: SAXParserFactory
 
   implicit def xmlEncoder[F[_]](
-      implicit charset: Charset = DefaultCharset): EntityEncoder[F, Elem] =
+      implicit charset: Charset = DefaultCharset): EntityEncoder[Elem] =
     EntityEncoder
-      .stringEncoder[F]
+      .stringEncoder
       .contramap[Elem](xml => xml.buildString(false))
       .withContentType(`Content-Type`(MediaType.application.xml))
 
@@ -29,7 +29,7 @@ trait ElemInstances {
     *
     * @return an XML element
     */
-  implicit def xml[F[_]](implicit F: Sync[F]): EntityDecoder[F, Elem] = {
+  implicit def xml[F[_]](implicit F: Sync[F]): EntityDecoder[Elem] = {
     import EntityDecoder._
     decodeBy(MediaType.text.xml, MediaType.text.html, MediaType.application.xml) { msg =>
       collectBinary(msg).flatMap[DecodeFailure, Elem] { chunk =>

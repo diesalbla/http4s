@@ -3,9 +3,7 @@ package server
 package middleware
 package authentication
 
-import cats.Applicative
-import cats.data.Kleisli
-import cats.effect.Sync
+import cats.effect.IO
 import cats.implicits._
 import org.http4s.headers.Authorization
 
@@ -19,7 +17,7 @@ object BasicAuth {
     * hashed value).  A Some value indicates success; None indicates
     * the password failed to validate.
     */
-  type BasicAuthenticator[F[_], A] = BasicCredentials => F[Option[A]]
+  type BasicAuthenticator[A] = BasicCredentials => IO[Option[A]]
 
   /**
     * Construct authentication middleware that can validate the client-provided
@@ -28,14 +26,12 @@ object BasicAuth {
     * @param validate Function that validates a plaintext password
     * @return
     */
-  def apply[F[_]: Sync, A](
-      realm: String,
-      validate: BasicAuthenticator[F, A]): AuthMiddleware[F, A] =
+  def apply[A](realm: String, validate: BasicAuthenticator[A]): AuthMiddleware[A] =
     challenged(challenge(realm, validate))
 
-  def challenge[F[_]: Applicative, A](realm: String, validate: BasicAuthenticator[F, A])
-      : Kleisli[F, Request[F], Either[Challenge, AuthedRequest[F, A]]] =
-    Kleisli { req =>
+  def challenge[A](realm: String, validate: BasicAuthenticator[A])
+      : Request => IO[Either[Challenge, AuthedRequest[A]]] =
+     { req =>
       validatePassword(validate, req).map {
         case Some(authInfo) =>
           Right(AuthedRequest(authInfo, req))
@@ -44,8 +40,7 @@ object BasicAuth {
       }
     }
 
-  private def validatePassword[F[_], A](validate: BasicAuthenticator[F, A], req: Request[F])(
-      implicit F: Applicative[F]): F[Option[A]] =
+  private def validatePassword[A](validate: BasicAuthenticator[A], req: Request): IO[Option[A]] =
     req.headers.get(Authorization) match {
       case Some(Authorization(BasicCredentials(username, password))) =>
         validate(BasicCredentials(username, password))

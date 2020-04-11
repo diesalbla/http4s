@@ -17,8 +17,8 @@ import org.typelevel.jawn.support.play.Parser.facade
 import play.api.libs.json._
 
 trait PlayInstances {
-  def jsonOf[F[_]: Sync, A](implicit decoder: Reads[A]): EntityDecoder[F, A] =
-    jsonDecoder[F].flatMapR { json =>
+  def jsonOf[A](implicit decoder: Reads[A]): EntityDecoder[A] =
+    jsonDecoder.flatMapR { json =>
       decoder
         .reads(json)
         .fold(
@@ -28,14 +28,14 @@ trait PlayInstances {
         )
     }
 
-  implicit def jsonDecoder[F[_]: Sync]: EntityDecoder[F, JsValue] =
-    jawn.jawnDecoder[F, JsValue]
+  implicit def jsonDecoder: EntityDecoder[JsValue] =
+    jawn.jawnDecoder[JsValue]
 
-  def jsonEncoderOf[F[_], A: Writes]: EntityEncoder[F, A] =
+  def jsonEncoderOf[A: Writes]: EntityEncoder[A] =
     jsonEncoder[F].contramap[A](Json.toJson(_))
 
-  implicit def jsonEncoder[F[_]]: EntityEncoder[F, JsValue] =
-    EntityEncoder[F, Chunk[Byte]]
+  implicit def jsonEncoder(implicit x: EntityEncoder[JsValue]) =
+    EntityEncoder[Chunk[Byte]]
       .contramap[JsValue] { json =>
         val bytes = json.toString.getBytes("UTF8")
         Chunk.bytes(bytes)
@@ -58,8 +58,8 @@ trait PlayInstances {
         )
     }
 
-  implicit class MessageSyntax[F[_]: Sync](self: Message[F]) {
-    def decodeJson[A: Reads]: F[A] =
-      self.as(implicitly, jsonOf[F, A])
+  implicit class MessageSyntax(self: Message) {
+    def decodeJson[A: Reads]: IO[A] =
+      self.as(implicitly, jsonOf[A])
   }
 }

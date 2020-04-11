@@ -173,7 +173,7 @@ class Http1ServerStageSpec extends Http4sSpec with AfterAll {
         .of[IO] {
           case _ =>
             val headers = Headers.of(H.`Transfer-Encoding`(TransferCoding.identity))
-            IO.pure(Response[IO](headers = headers)
+            IO.pure(Response(headers = headers)
               .withEntity("hello world"))
         }
         .orNotFound
@@ -197,7 +197,7 @@ class Http1ServerStageSpec extends Http4sSpec with AfterAll {
         .of[IO] {
           case _ =>
             IO.pure(
-              Response[IO](status = Status.NotModified)
+              Response(status = Status.NotModified)
                 .putHeaders(`Transfer-Encoding`(TransferCoding.chunked))
                 .withEntity("Foo!"))
         }

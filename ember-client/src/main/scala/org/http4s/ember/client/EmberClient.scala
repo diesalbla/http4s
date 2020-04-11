@@ -20,5 +20,5 @@ final class EmberClient[F[_]] private[client] (
     */
   def state: F[(Int, Map[RequestKey, Int])] = pool.state
 
-  def run(req: Request[F]): Resource[F, Response[F]] = client.run(req)
+  def run(req: Request): Resource[F, Response] = client.run(req)
 }

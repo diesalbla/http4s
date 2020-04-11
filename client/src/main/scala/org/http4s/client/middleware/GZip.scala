@@ -24,7 +24,7 @@ object GZip {
       }
     }
 
-  private def addHeaders[F[_]](req: Request[F]): Request[F] =
+  private def addHeaders[F[_]](req: Request): Request =
     req.headers.get(`Accept-Encoding`) match {
       case Some(_) =>
         req
@@ -34,8 +34,8 @@ object GZip {
     }
 
   @silent("deprecated")
-  private def decompress[F[_]](bufferSize: Int, response: Response[F])(
-      implicit F: Bracket[F, Throwable]): Response[F] =
+  private def decompress[F[_]](bufferSize: Int, response: Response)(
+      implicit F: Bracket[F, Throwable]): Response =
     response.headers.get(`Content-Encoding`) match {
       case Some(header)
           if header.contentCoding == ContentCoding.gzip || header.contentCoding == ContentCoding.`x-gzip` =>

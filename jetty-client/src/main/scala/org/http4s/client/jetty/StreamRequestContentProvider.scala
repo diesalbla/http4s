@@ -17,7 +17,7 @@ private[jetty] final case class StreamRequestContentProvider[F[_]](s: Semaphore[
     extends DeferredContentProvider {
   import StreamRequestContentProvider.logger
 
-  def write(req: Request[F]): F[Unit] =
+  def write(req: Request): F[Unit] =
     req.body.chunks
       .through(pipe)
       .compile

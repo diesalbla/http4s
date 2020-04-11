@@ -45,7 +45,7 @@ object AsyncHttpClient {
     F.delay(new DefaultAsyncHttpClient(config))
       .map(c =>
         (Client[F] { req =>
-          Resource(F.async[(Response[F], F[Unit])] { cb =>
+          Resource(F.async[(Response, F[Unit])] { cb =>
             c.executeRequest(toAsyncRequest(req), asyncHandler(cb))
             ()
           })
@@ -70,14 +70,14 @@ object AsyncHttpClient {
     * shutdown when the stream terminates.
     */
   def stream[F[_]](config: AsyncHttpClientConfig = defaultConfig)(
-      implicit F: ConcurrentEffect[F]): Stream[F, Client[F]] =
+      implicit F: ConcurrentEffect[F]): Stream[IO, Client[F]] =
     Stream.resource(resource(config))
 
-  private def asyncHandler[F[_]](cb: Callback[(Response[F], F[Unit])])(
+  private def asyncHandler[F[_]](cb: Callback[(Response, F[Unit])])(
       implicit F: ConcurrentEffect[F]) =
     new StreamedAsyncHandler[Unit] {
       var state: State = State.CONTINUE
-      var response: Response[F] = Response()
+      var response: Response = Response()
       val dispose = F.delay { state = State.ABORT }
 
       override def onStream(publisher: Publisher[HttpResponseBodyPart]): State = {
@@ -127,7 +127,7 @@ object AsyncHttpClient {
         invokeCallback(logger)(cb(Right(response -> dispose)))
     }
 
-  private def toAsyncRequest[F[_]: ConcurrentEffect](request: Request[F]): AsyncRequest = {
+  private def toAsyncRequest[F[_]: ConcurrentEffect](request: Request): AsyncRequest = {
     val headers = new DefaultHttpHeaders
     for (h <- request.headers.toList)
       headers.add(h.name.value, h.value)
@@ -138,7 +138,7 @@ object AsyncHttpClient {
       .build()
   }
 
-  private def getBodyGenerator[F[_]: ConcurrentEffect](req: Request[F]): BodyGenerator = {
+  private def getBodyGenerator[F[_]: ConcurrentEffect](req: Request): BodyGenerator = {
     val publisher = StreamUnicastPublisher(
       req.body.chunks.map(chunk => Unpooled.wrappedBuffer(chunk.toArray)))
     if (req.isChunked) new ReactiveStreamsBodyGenerator(publisher, -1)

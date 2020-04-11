@@ -1,13 +1,11 @@
 package org.http4s
 
-import cats.Functor
-import cats.data.Kleisli
+import cats.effect.IO
 
 object AuthedRequest {
-  def apply[F[_]: Functor, T](
-      getUser: Request[F] => F[T]): Kleisli[F, Request[F], AuthedRequest[F, T]] =
-    ContextRequest[F, T](getUser)
+  def apply[T](getUser: Request => IO[T]): Request => IO[AuthedRequest[T]] =
+    ContextRequest[T](getUser)
 
-  def apply[F[_], T](context: T, req: Request[F]): AuthedRequest[F, T] =
-    ContextRequest[F, T](context, req)
+  def apply[T](context: T, req: Request): AuthedRequest[T] =
+    ContextRequest[T](context, req)
 }

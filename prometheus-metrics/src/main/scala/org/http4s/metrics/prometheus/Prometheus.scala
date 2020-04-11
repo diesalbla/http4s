@@ -30,7 +30,7 @@ import org.http4s.metrics.TerminationType.{Abnormal, Error, Timeout}
   * import org.http4s.client.middleware.Metrics
   * import org.http4s.metrics.Prometheus
   *
-  * val classifierFunc = (r: Request[IO]) => Some(r.method.toString.toLowerCase)
+  * val classifierFunc = (r: Request) => Some(r.method.toString.toLowerCase)
   * val meteredClient: Resource[IO, Client[IO]] =
   *   Prometheus.metricsOps[IO](registry, "client").map(ops => Metrics[IO](ops, classifierFunc)(client))
   * }}}

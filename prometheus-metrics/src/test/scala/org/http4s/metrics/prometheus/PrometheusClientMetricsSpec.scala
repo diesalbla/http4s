@@ -79,7 +79,7 @@ class PrometheusClientMetricsSpec extends Http4sSpec {
     "register a POST request" in withMeteredClient {
       case (registry, client) =>
         for {
-          resp <- client.expect[String](Request[IO](POST, Uri.unsafeFromString("ok"))).attempt
+          resp <- client.expect[String](Request(POST, Uri.unsafeFromString("ok"))).attempt
         } yield {
           resp must beRight { contain("200 OK") }
 
@@ -93,7 +93,7 @@ class PrometheusClientMetricsSpec extends Http4sSpec {
     "register a PUT request" in withMeteredClient {
       case (registry, client) =>
         for {
-          resp <- client.expect[String](Request[IO](PUT, Uri.unsafeFromString("ok"))).attempt
+          resp <- client.expect[String](Request(PUT, Uri.unsafeFromString("ok"))).attempt
         } yield {
           resp must beRight { contain("200 OK") }
 
@@ -107,7 +107,7 @@ class PrometheusClientMetricsSpec extends Http4sSpec {
     "register a DELETE request" in withMeteredClient {
       case (registry, client) =>
         for {
-          resp <- client.expect[String](Request[IO](DELETE, Uri.unsafeFromString("ok"))).attempt
+          resp <- client.expect[String](Request(DELETE, Uri.unsafeFromString("ok"))).attempt
         } yield {
           resp must beRight { contain("200 OK") }
 
@@ -147,7 +147,7 @@ class PrometheusClientMetricsSpec extends Http4sSpec {
     }
 
     "use the provided request classifier" in {
-      val classifier = (_: Request[IO]) => Some("classifier")
+      val classifier = (_: Request) => Some("classifier")
 
       meteredClient(classifier)
         .use {
@@ -184,7 +184,7 @@ class PrometheusClientMetricsSpec extends Http4sSpec {
     meteredClient().use(in.tupled).unsafeRunSync()
 
   private def meteredClient(
-      classifier: Request[IO] => Option[String] = (_: Request[IO]) => None
+      classifier: Request => Option[String] = (_: Request) => None
   ): Resource[IO, (CollectorRegistry, Client[IO])] = {
     implicit val clock: Clock[IO] = FakeClock[IO]
 

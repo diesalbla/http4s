@@ -6,13 +6,13 @@ weight: 305
 
 ## Introduction
 
-Streaming lies at the heart of the http4s model of HTTP, in the literal sense that `EntityBody[F]`
-is just a type alias for `Stream[F, Byte]`. Please see [entity] for details. This means
+Streaming lies at the heart of the http4s model of HTTP, in the literal sense that `EntityBody`
+is just a type alias for `Stream[IO, Byte]`. Please see [entity] for details. This means
 HTTP streaming is provided by both http4s' service support and its client support.
 
 ## Streaming responses from your service
 
-Because `EntityBody[F]`s are streams anyway, returning a stream as a response from your service is
+Because `EntityBody`s are streams anyway, returning a stream as a response from your service is
 simplicity itself:
 
 ```tut:silent
@@ -46,16 +46,16 @@ it converts a stream of JSON objects to a JSON array, which is friendlier to cli
 ## Consuming streams with the client
 
 The http4s [client] supports consuming chunked HTTP responses as a stream, again because the
-`EntityBody[F]` is a stream anyway. http4s' `Client` interface consumes streams with the `streaming`
-function, which takes a `Request[F]` and a `Response[F] => Stream[F, A]` and returns a
-`Stream[F, A]`. Since an `EntityBody[F]` is just a `Stream[F, Byte]`, then, the easiest way
+`EntityBody` is a stream anyway. http4s' `Client` interface consumes streams with the `streaming`
+function, which takes a `Request` and a `Response => Stream[IO, A]` and returns a
+`Stream[IO, A]`. Since an `EntityBody` is just a `Stream[IO, Byte]`, then, the easiest way
 to consume a stream is just:
 
 ```scala
 client.stream(req).flatMap(_)
 ```
 
-That gives you a `Stream[F, Byte]`, but you probably want something other than a `Byte`.
+That gives you a `Stream[IO, Byte]`, but you probably want something other than a `Byte`.
 Here's some code intended to consume [Twitter's streaming APIs], which return a stream of JSON.
 
 First, let's assume we want to use [Circe] for JSON support. Please see [json] for details.
@@ -104,18 +104,18 @@ class TWStream[F[_]: ConcurrentEffect : ContextShift] {
    * OAuth signing is an effect due to generating a nonce for each `Request`.
    */
   def sign(consumerKey: String, consumerSecret: String, accessToken: String, accessSecret: String)
-          (req: Request[F]): F[Request[F]] = {
+          (req: Request): F[Request] = {
     val consumer = oauth1.Consumer(consumerKey, consumerSecret)
     val token    = oauth1.Token(accessToken, accessSecret)
     oauth1.signRequest(req, consumer, callback = None, verifier = None, token = Some(token))
   }
 
-  /* Create a http client, sign the incoming `Request[F]`, stream the `Response[IO]`, and
-   * `parseJsonStream` the `Response[F]`.
+  /* Create a http client, sign the incoming `Request`, stream the `Response`, and
+   * `parseJsonStream` the `Response`.
    * `sign` returns a `F`, so we need to `Stream.eval` it to use a for-comprehension.
    */
   def jsonStream(consumerKey: String, consumerSecret: String, accessToken: String, accessSecret: String)
-            (req: Request[F]): Stream[F, Json] =
+            (req: Request): Stream[IO, Json] =
     for {
       client <- BlazeClientBuilder(global).stream
       sr  <- Stream.eval(sign(consumerKey, consumerSecret, accessToken, accessSecret)(req))
@@ -127,8 +127,8 @@ class TWStream[F[_]: ConcurrentEffect : ContextShift] {
    * We map over the Circe `Json` objects to pretty-print them with `spaces2`.
    * Then we `to` them to fs2's `lines` and then to `stdout` `Sink` to print them.
    */
-  def stream(blocker: Blocker): Stream[F, Unit] = {
-    val req = Request[F](Method.GET, uri"https://stream.twitter.com/1.1/statuses/sample.json")
+  def stream(blocker: Blocker): Stream[IO, Unit] = {
+    val req = Request(Method.GET, uri"https://stream.twitter.com/1.1/statuses/sample.json")
     val s   = jsonStream("<consumerKey>", "<consumerSecret>", "<accessToken>", "<accessSecret>")(req)
     s.map(_.spaces2).through(lines).through(utf8Encode).through(stdout(blocker))
   }

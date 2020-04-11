@@ -29,10 +29,10 @@ class JsonXmlHttpEndpoint[F[_]](implicit F: Effect[F]) extends Http4sDsl[F] {
     }
   }
 
-  def personXmlDecoder: EntityDecoder[F, Person] =
+  def personXmlDecoder: EntityDecoder[Person] =
     org.http4s.scalaxml.xml[F].map(Person.fromXml)
 
-  implicit def jsonXmlDecoder: EntityDecoder[F, Person] = jsonOf[F, Person].orElse(personXmlDecoder)
+  implicit def jsonXmlDecoder: EntityDecoder[Person] = jsonOf[F, Person].orElse(personXmlDecoder)
 
   val service: HttpRoutes[F] = HttpRoutes.of {
     case GET -> Root / ApiVersion / "media" =>

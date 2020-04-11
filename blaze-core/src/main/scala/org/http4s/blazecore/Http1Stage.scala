@@ -50,7 +50,7 @@ private[http4s] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
 
   /** Get the proper body encoder based on the message headers */
   final protected def getEncoder(
-      msg: Message[F],
+      msg: Message,
       rr: StringWriter,
       minor: Int,
       closeOnFinish: Boolean): Http1Writer[F] = {
@@ -135,7 +135,7 @@ private[http4s] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
   final protected def collectBodyFromParser(
       buffer: ByteBuffer,
       eofCondition: () => Either[Throwable, Option[Chunk[Byte]]])
-      : (EntityBody[F], () => Future[ByteBuffer]) =
+      : (EntityBody, () => Future[ByteBuffer]) =
     if (contentComplete()) {
       if (buffer.remaining() == 0) Http1Stage.CachedEmptyBody
       else (EmptyBody, () => Future.successful(buffer))
@@ -163,7 +163,7 @@ private[http4s] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
   private def streamingBody(
       buffer: ByteBuffer,
       eofCondition: () => Either[Throwable, Option[Chunk[Byte]]])
-      : (EntityBody[F], () => Future[ByteBuffer]) = {
+      : (EntityBody, () => Future[ByteBuffer]) = {
     @volatile var currentBuffer = buffer
 
     // TODO: we need to work trailers into here somehow

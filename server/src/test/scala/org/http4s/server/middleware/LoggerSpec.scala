@@ -33,12 +33,12 @@ class LoggerSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     val app = ResponseLogger.httpApp(logHeaders = true, logBody = true)(testApp)
 
     "not affect a Get" in {
-      val req = Request[IO](uri = uri("/request"))
+      val req = Request(uri = uri("/request"))
       app(req) must returnStatus(Status.Ok)
     }
 
     "not affect a Post" in {
-      val req = Request[IO](uri = uri("/post"), method = POST).withBodyStream(body)
+      val req = Request(uri = uri("/post"), method = POST).withBodyStream(body)
       val res = app(req)
       res must returnStatus(Status.Ok)
       res must returnBody(expectedBody)
@@ -49,12 +49,12 @@ class LoggerSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     val app = RequestLogger.httpApp(logHeaders = true, logBody = true)(testApp)
 
     "not affect a Get" in {
-      val req = Request[IO](uri = uri("/request"))
+      val req = Request(uri = uri("/request"))
       app(req) must returnStatus(Status.Ok)
     }
 
     "not affect a Post" in {
-      val req = Request[IO](uri = uri("/post"), method = POST).withBodyStream(body)
+      val req = Request(uri = uri("/post"), method = POST).withBodyStream(body)
       val res = app(req)
       res must returnStatus(Status.Ok)
       res must returnBody(expectedBody)
@@ -65,12 +65,12 @@ class LoggerSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     val app = Logger.httpApp(logHeaders = true, logBody = true)(testApp)
 
     "not affect a Get" in {
-      val req = Request[IO](uri = uri("/request"))
+      val req = Request(uri = uri("/request"))
       app(req) must returnStatus(Status.Ok)
     }
 
     "not affect a Post" in {
-      val req = Request[IO](uri = uri("/post"), method = POST).withBodyStream(body)
+      val req = Request(uri = uri("/post"), method = POST).withBodyStream(body)
       val res = app(req)
       res must returnStatus(Status.Ok)
       res must returnBody(expectedBody)

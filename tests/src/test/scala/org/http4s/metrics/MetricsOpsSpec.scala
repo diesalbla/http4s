@@ -20,7 +20,7 @@ class MetricsOpsSpec extends Http4sSpec {
   "classifierFMethodWithOptionallyExcludedPath" should {
     "properly exclude UUIDs" in prop {
       (method: Method, uuid: UUID, excludedValue: String, separator: String) =>
-        val request: Request[IO] = Request[IO](
+        val request: Request = Request(
           method = method,
           uri = Uri.unsafeFromString(s"/users/$uuid/comments")
         )
@@ -31,7 +31,7 @@ class MetricsOpsSpec extends Http4sSpec {
             .isRight
         }
 
-        val classifier: Request[IO] => Option[String] =
+        val classifier: Request => Option[String] =
           classifierFMethodWithOptionallyExcludedPath(
             exclude = excludeUUIDs,
             excludedValue = excludedValue,
@@ -55,12 +55,12 @@ class MetricsOpsSpec extends Http4sSpec {
         result ==== expected
     }
     "return '$method' if the path is '/'" in prop { method: Method =>
-      val request: Request[IO] = Request[IO](
+      val request: Request = Request(
         method = method,
         uri = uri"""/"""
       )
 
-      val classifier: Request[IO] => Option[String] =
+      val classifier: Request => Option[String] =
         classifierFMethodWithOptionallyExcludedPath(
           _ => true,
           "*",

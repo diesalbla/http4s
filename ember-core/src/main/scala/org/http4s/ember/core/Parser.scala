@@ -16,8 +16,8 @@ private[ember] object Parser {
     */
   def httpHeaderAndBody[F[_]](maxHeaderSize: Int)(
       implicit
-      F: ApplicativeError[F, Throwable]): Pipe[F, Byte, (ByteVector, Stream[F, Byte])] = {
-    def go(buff: ByteVector, in: Stream[F, Byte]): Pull[F, (ByteVector, Stream[F, Byte]), Unit] =
+      F: ApplicativeError[F, Throwable]): Pipe[F, Byte, (ByteVector, Stream[IO, Byte])] = {
+    def go(buff: ByteVector, in: Stream[IO, Byte]): Pull[IO, (ByteVector, Stream[IO, Byte]), Unit] =
       in.pull.uncons.flatMap {
         case None =>
           Pull.raiseError[F](
@@ -88,10 +88,10 @@ private[ember] object Parser {
   }
 
   object Request {
-    def parser[F[_]: Sync](maxHeaderLength: Int)(s: Stream[F, Byte])(l: Logger[F]): F[Request[F]] =
+    def parser[F[_]: Sync](maxHeaderLength: Int)(s: Stream[IO, Byte])(l: Logger[F]): F[Request] =
       s.through(httpHeaderAndBody[F](maxHeaderLength))
         .evalMap {
-          case (bv, body) => headerBlobByteVectorToRequest[F](bv, body, maxHeaderLength)(l)
+          case (bv, body) => headerBlobByteVectorToRequest(bv, body, maxHeaderLength)(l)
         }
         .take(1)
         .compile
@@ -99,9 +99,9 @@ private[ember] object Parser {
 
     private def headerBlobByteVectorToRequest[F[_]](
         b: ByteVector,
-        s: Stream[F, Byte],
+        s: Stream[IO, Byte],
         maxHeaderLength: Int)(logger: Logger[F])(
-        implicit F: MonadError[F, Throwable]): F[Request[F]] =
+        implicit F: MonadError[F, Throwable]): F[Request] =
       for {
         shE <- splitHeader(b)(logger)
         (methodHttpUri, headersBV) <- shE.fold(
@@ -132,7 +132,7 @@ private[ember] object Parser {
         newUri = uri.copy(
           authority = host.map(h => Uri.Authority(host = Uri.RegName(h.host), port = h.port)))
         newHeaders = headers.filterNot(_.is(org.http4s.headers.Host))
-      } yield org.http4s.Request[F](
+      } yield org.http4s.Request(
         method = method,
         uri = newUri,
         httpVersion = http,
@@ -179,11 +179,11 @@ private[ember] object Parser {
   }
 
   object Response {
-    def parser[F[_]: Sync](maxHeaderLength: Int)(s: Stream[F, Byte])(
-        logger: Logger[F]): Resource[F, Response[F]] =
+    def parser[F[_]: Sync](maxHeaderLength: Int)(s: Stream[IO, Byte])(
+        logger: Logger[F]): Resource[F, Response] =
       s.through(httpHeaderAndBody[F](maxHeaderLength))
         .evalMap {
-          case (bv, body) => headerBlobByteVectorToResponse[F](bv, body, maxHeaderLength)(logger)
+          case (bv, body) => headerBlobByteVectorToResponse(bv, body, maxHeaderLength)(logger)
         }
         .take(1)
         .compile
@@ -192,9 +192,9 @@ private[ember] object Parser {
 
     private def headerBlobByteVectorToResponse[F[_]](
         b: ByteVector,
-        s: Stream[F, Byte],
+        s: Stream[IO, Byte],
         maxHeaderLength: Int)(logger: Logger[F])(
-        implicit F: MonadError[F, Throwable]): F[Response[F]] =
+        implicit F: MonadError[F, Throwable]): F[Response] =
       for {
         hE <- splitHeader(b)(logger)
         (methodHttpUri, headersBV) <- hE.fold(
@@ -213,7 +213,7 @@ private[ember] object Parser {
 
         body = if (isChunked) s.through(ChunkedEncoding.decode(maxHeaderLength))
         else s.take(contentLength)
-      } yield org.http4s.Response[F](
+      } yield org.http4s.Response(
         status = status,
         httpVersion = httpV,
         headers = headers,

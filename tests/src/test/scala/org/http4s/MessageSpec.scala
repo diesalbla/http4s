@@ -164,13 +164,13 @@ class MessageSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     "toString" should {
       "redact an Authorization header" in {
         val request =
-          Request[IO](Method.GET).putHeaders(Authorization(BasicCredentials("user", "pass")))
+          Request(Method.GET).putHeaders(Authorization(BasicCredentials("user", "pass")))
         request.toString must_== ("Request(method=GET, uri=/, headers=Headers(Authorization: <REDACTED>))")
       }
 
       "redact Cookie Headers" in {
         val request =
-          Request[IO](Method.GET).addCookie("token", "value").addCookie("token2", "value2")
+          Request(Method.GET).addCookie("token", "value").addCookie("token2", "value2")
         request.toString must_== ("Request(method=GET, uri=/, headers=Headers(Cookie: <REDACTED>))")
       }
     }
@@ -196,7 +196,7 @@ class MessageSpec extends Http4sSpec with Http4sLegacyMatchersIO {
         scheme = Some(Scheme.http),
         authority = Some(Authority(port = Some(port)))
       )
-      val request = Request[IO](Method.GET, uri)
+      val request = Request(Method.GET, uri)
 
       "build cURL representation with scheme and authority" in {
         request.asCurl() mustEqual "curl -X GET 'http://localhost:1234/foo'"
@@ -238,12 +238,12 @@ class MessageSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       "produce a UnsupportedMediaType in the event of a decode failure" >> {
         "MediaTypeMismatch" in {
           val req =
-            Request[IO](headers = Headers.of(`Content-Type`(MediaType.application.`octet-stream`)))
+            Request(headers = Headers.of(`Content-Type`(MediaType.application.`octet-stream`)))
           val resp = req.decodeWith(EntityDecoder.text, strict = true)(_ => IO.pure(Response()))
           resp.map(_.status) must returnValue(Status.UnsupportedMediaType)
         }
         "MediaTypeMissing" in {
-          val req = Request[IO]()
+          val req = Request()
           val resp = req.decodeWith(EntityDecoder.text, strict = true)(_ => IO.pure(Response()))
           resp.map(_.status) must returnValue(Status.UnsupportedMediaType)
         }

@@ -37,7 +37,7 @@ object Router {
           }
     }
 
-  private[server] def translate[F[_]: Functor](prefix: String)(req: Request[F]): Request[F] = {
+  private[server] def translate[F[_]: Functor](prefix: String)(req: Request): Request = {
     val newCaret = prefix match {
       case "/" => 0
       case x if x.startsWith("/") => x.length

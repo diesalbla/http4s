@@ -27,7 +27,7 @@ object TranslateUri {
       }
     }
 
-  private def setCaret[F[_]: Functor](req: Request[F], newCaret: Int): Request[F] = {
+  private def setCaret[F[_]: Functor](req: Request, newCaret: Int): Request = {
     val oldCaret = req.attributes
       .lookup(Request.Keys.PathInfoCaret)
       .getOrElse(0)

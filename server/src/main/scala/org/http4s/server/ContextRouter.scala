@@ -1,7 +1,6 @@
 package org.http4s.server
 
 import org.http4s.{ContextRequest, ContextRoutes}
-import cats.data.Kleisli
 import cats.effect.Sync
 import cats.syntax.semigroupk._
 
@@ -11,8 +10,8 @@ object ContextRouter {
     * Defines an [[ContextRoutes]] based on list of mappings.
     * @see define
     */
-  def apply[F[_]: Sync, A](mappings: (String, ContextRoutes[A, F])*): ContextRoutes[A, F] =
-    define(mappings: _*)(ContextRoutes.empty[A, F])
+  def apply[A](mappings: (String, ContextRoutes[A])*): ContextRoutes[A] =
+    define(mappings: _*)(ContextRoutes.empty[A])
 
   /**
     * Defines an [[ContextRoutes]] based on list of mappings and
@@ -20,19 +19,17 @@ object ContextRouter {
     *
     * The mappings are processed in descending order (longest first) of prefix length.
     */
-  def define[F[_]: Sync, A](
-      mappings: (String, ContextRoutes[A, F])*
-  )(default: ContextRoutes[A, F]): ContextRoutes[A, F] =
+  def define[A](mappings: (String, ContextRoutes[A, F])*)(default: ContextRoutes[A]): ContextRoutes[A] =
     mappings.sortBy(_._1.length).foldLeft(default) {
       case (acc, (prefix, routes)) =>
         val segments = Router.toSegments(prefix)
         if (segments.isEmpty) routes <+> acc
         else
-          Kleisli { req =>
+          { req =>
             (
               if (Router.toSegments(req.req.pathInfo).startsWith(segments))
                 routes
-                  .local[ContextRequest[F, A]](r =>
+                  .local[ContextRequest[A]](r =>
                     ContextRequest(r.context, Router.translate(prefix)(r.req))) <+> acc
               else
                 acc

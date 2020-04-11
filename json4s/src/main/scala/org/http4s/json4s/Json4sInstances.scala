@@ -11,18 +11,17 @@ import org.typelevel.jawn.support.json4s.Parser
 object CustomParser extends Parser(useBigDecimalForDouble = true, useBigIntForLong = true)
 
 trait Json4sInstances[J] {
-  implicit def jsonDecoder[F[_]](implicit F: Sync[F]): EntityDecoder[F, JValue] =
+  implicit val jsonDecoder: EntityDecoder[JValue] =
     jawn.jawnDecoder(F, CustomParser.facade)
 
-  def jsonOf[F[_], A](implicit reader: Reader[A], F: Sync[F]): EntityDecoder[F, A] =
+  def jsonOf[A](implicit reader: Reader[A]): EntityDecoder[A] =
     jsonDecoder.flatMapR { json =>
-      DecodeResult(
-        F.delay(reader.read(json))
-          .map[Either[DecodeFailure, A]](Right(_))
-          .recover {
-            case e: MappingException =>
-              Left(InvalidMessageBodyFailure("Could not map JSON", Some(e)))
-          })
+      IO.delay(reader.read(json))
+        .map[Either[DecodeFailure, A]](Right(_))
+        .recover {
+          case e: MappingException =>
+            Left(InvalidMessageBodyFailure("Could not map JSON", Some(e)))
+        }
     }
 
   /**
@@ -31,19 +30,15 @@ trait Json4sInstances[J] {
     * Editorial: This is heavily dependent on reflection. This is more idiomatic json4s, but less
     * idiomatic http4s, than [[jsonOf]].
     */
-  def jsonExtract[F[_], A](
-      implicit F: Sync[F],
-      formats: Formats,
-      manifest: Manifest[A]): EntityDecoder[F, A] =
+  def jsonExtract[A](implicit formats: Formats, manifest: Manifest[A]): EntityDecoder[A] =
     jsonDecoder.flatMapR { json =>
-      DecodeResult(
-        F.delay[Either[DecodeFailure, A]](Right(json.extract[A]))
-          .handleError(e => Left(InvalidMessageBodyFailure("Could not extract JSON", Some(e)))))
+        IO.delay[Either[DecodeFailure, A]](Right(json.extract[A]))
+          .handleError(e => Left(InvalidMessageBodyFailure("Could not extract JSON", Some(e))))
     }
 
   protected def jsonMethods: JsonMethods[J]
 
-  implicit def jsonEncoder[F[_], A <: JValue]: EntityEncoder[F, A] =
+  implicit def jsonEncoder[F[_], A <: JValue]: EntityEncoder[A] =
     EntityEncoder
       .stringEncoder(Charset.`UTF-8`)
       .contramap[A] { json =>
@@ -53,7 +48,7 @@ trait Json4sInstances[J] {
       }
       .withContentType(`Content-Type`(MediaType.application.json))
 
-  def jsonEncoderOf[F[_], A](implicit writer: Writer[A]): EntityEncoder[F, A] =
+  def jsonEncoderOf[F[_], A](implicit writer: Writer[A]): EntityEncoder[A] =
     jsonEncoder[F, JValue].contramap[A](writer.write)
 
   implicit val uriWriter: JsonFormat[Uri] =
@@ -75,7 +70,7 @@ trait Json4sInstances[J] {
         JString(uri.toString)
     }
 
-  implicit class MessageSyntax[F[_]: Sync](self: Message[F]) {
+  implicit class MessageSyntax[F[_]: Sync](self: Message) {
     def decodeJson[A](implicit decoder: Reader[A]): F[A] =
       self.as(implicitly, jsonOf[F, A])
   }

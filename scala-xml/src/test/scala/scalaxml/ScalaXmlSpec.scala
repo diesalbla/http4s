@@ -14,14 +14,14 @@ class ScalaXmlSpec extends Http4sSpec {
   def strBody(body: String): EntityBody[IO] = Stream(body).through(utf8Encode)
 
   "xml" should {
-    val server: Request[IO] => IO[Response[IO]] = { req =>
+    val server: Request => IO[Response] = { req =>
       req.decode { (elem: Elem) =>
-        IO.pure(Response[IO](Ok).withEntity(elem.label))
+        IO.pure(Response(Ok).withEntity(elem.label))
       }
     }
 
     "parse the XML" in {
-      val resp = server(Request[IO](body = strBody("<html><h1>h1</h1></html>"))).unsafeRunSync()
+      val resp = server(Request(body = strBody("<html><h1>h1</h1></html>"))).unsafeRunSync()
       resp.status must_== Ok
       getBody(resp.body) must_== "html".getBytes
     }
@@ -39,7 +39,7 @@ class ScalaXmlSpec extends Http4sSpec {
 
     "return 400 on parse error" in {
       val body = strBody("This is not XML.")
-      val tresp = server(Request[IO](body = body))
+      val tresp = server(Request(body = body))
       tresp.unsafeRunSync.status must_== Status.BadRequest
     }
   }

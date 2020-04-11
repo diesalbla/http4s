@@ -1,55 +1,57 @@
 package org.http4s
 
-import cats._
-import cats.data.Kleisli
+import cats.effect.IO
 
-/** Functions for creating [[Http]] kleislis. */
-object Http {
+/** An HTTP is a function of a [[Request]] input to an IO computation of a [[Response]] output. 
+  * This type is useful for writing middleware that are polymorphic over the return type F.
+  *
+  */
+trait Http { self =>
 
-  /** Lifts a function into an [[Http]] kleisli.  The application of
-    * `run` is suspended in `F` to permit more efficient combination
-    * of routes via `SemigroupK`.
-    *
-    * @tparam F the effect of the [[Response]] returned by the [[Http]]
-    * @tparam G the effect of the bodies of the [[Request]] and [[Response]]
-    * @param run the function to lift
-    * @return an [[Http]] that suspends `run`.
-    */
-  def apply[F[_], G[_]](run: Request[G] => F[Response[G]])(implicit F: Defer[F]): Http[F, G] =
-    Kleisli(req => F.defer(run(req)))
-
-  /** Lifts an effectful [[Response]] into an [[Http]] kleisli.
-    *
-    * @tparam F the effect of the [[Response]] returned by the [[Http]]
-    * @tparam G the effect of the bodies of the [[Request]] and [[Response]]
-    * @param fr the effectful [[Response]] to lift
-    * @return an [[Http]] that always returns `fr`
-    */
-  def liftF[F[_], G[_]](fr: F[Response[G]]): Http[F, G] =
-    Kleisli.liftF(fr)
-
-  /** Lifts a [[Response]] into an [[Http]] kleisli.
-    *
-    * @tparam F the effect of the [[Response]] returned by the [[Http]]
-    * @tparam G the effect of the bodies of the [[Request]] and [[Response]]
-    * @param r the [[Response]] to lift
-    * @return an [[Http]] that always returns `r` in effect `F`
-    */
-  def pure[F[_]: Applicative, G[_]](r: Response[G]): Http[F, G] =
-    Kleisli.pure(r)
+  def apply(req: Request): IO[Response]
 
   /** Transforms an [[Http]] on its input.  The application of the
     * transformed function is suspended in `F` to permit more
     * efficient combination of routes via `SemigroupK`.
     *
-    * @tparam F the effect of the [[Response]] returned by the [[Http]]
-    * @tparam G the effect of the bodies of the [[Request]] and [[Response]]
     * @param f a function to apply to the [[Request]]
     * @param fa the [[Http]] to transform
     * @return An [[Http]] whose input is transformed by `f` before
     * being applied to `fa`
     */
-  def local[F[_], G[_]](f: Request[G] => Request[G])(fa: Http[F, G])(
-      implicit F: Defer[F]): Http[F, G] =
-    Kleisli(req => F.defer(fa.run(f(req))))
+  def local(f: Request => Request): Http =
+    req => IO.suspend(self(f(req)))
+
+}
+
+/** Functions for creating [[Http]] kleislis. */
+object Http {
+
+  /** Lifts a function into an [[Http]].  The application of
+    * `run` is suspended in `IO` to permit more efficient combination
+    * of routes via `SemigroupK`.
+    *
+    * @param run the function to lift
+    * @return an [[Http]] that suspends `run`.
+    */
+  def apply(run: Request => IO[Response]): Http =
+    req => IO.suspend(run(req))
+
+  /** Lifts an effectful [[Response]] into an [[Http]] kleisli.
+    *
+    * @param ioResponse the effectful [[Response]] to lift
+    * @return an [[Http]] that always returns `fr`
+    */
+  def liftF(ioResponse: IO[Response]): Http = _ => ioResponse
+
+  /** Lifts a [[Response]] into an [[Http]] kleisli.
+    *
+    * @param r the [[Response]] to lift
+    * @return an [[Http]] that always returns `r` in effect `F`
+    */
+  def pure(response: Response): Http = _ => IO.pure(response)
+
+  /** An app that always returns `404 Not Found`. */
+  def notFound: Http = pure(Response.notFound)
+
 }

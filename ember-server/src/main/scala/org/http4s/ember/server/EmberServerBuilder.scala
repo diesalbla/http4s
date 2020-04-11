@@ -20,8 +20,8 @@ final class EmberServerBuilder[F[_]: Concurrent: Timer: ContextShift] private (
     private val blockerOpt: Option[Blocker],
     private val tlsInfoOpt: Option[(TLSContext, TLSParameters)],
     private val sgOpt: Option[SocketGroup],
-    private val onError: Throwable => Response[F],
-    private val onWriteFailure: (Option[Request[F]], Response[F], Throwable) => F[Unit],
+    private val onError: Throwable => Response,
+    private val onWriteFailure: (Option[Request], Response, Throwable) => F[Unit],
     val maxConcurrency: Int,
     val receiveBufferSize: Int,
     val maxHeaderSize: Int,
@@ -37,8 +37,8 @@ final class EmberServerBuilder[F[_]: Concurrent: Timer: ContextShift] private (
       blockerOpt: Option[Blocker] = self.blockerOpt,
       tlsInfoOpt: Option[(TLSContext, TLSParameters)] = self.tlsInfoOpt,
       sgOpt: Option[SocketGroup] = self.sgOpt,
-      onError: Throwable => Response[F] = self.onError,
-      onWriteFailure: (Option[Request[F]], Response[F], Throwable) => F[Unit] = self.onWriteFailure,
+      onError: Throwable => Response = self.onError,
+      onWriteFailure: (Option[Request], Response, Throwable) => F[Unit] = self.onWriteFailure,
       maxConcurrency: Int = self.maxConcurrency,
       receiveBufferSize: Int = self.receiveBufferSize,
       maxHeaderSize: Int = self.maxHeaderSize,
@@ -77,8 +77,8 @@ final class EmberServerBuilder[F[_]: Concurrent: Timer: ContextShift] private (
   def withBlocker(blocker: Blocker) =
     copy(blockerOpt = blocker.pure[Option])
 
-  def withOnError(onError: Throwable => Response[F]) = copy(onError = onError)
-  def withOnWriteFailure(onWriteFailure: (Option[Request[F]], Response[F], Throwable) => F[Unit]) =
+  def withOnError(onError: Throwable => Response) = copy(onError = onError)
+  def withOnWriteFailure(onWriteFailure: (Option[Request], Response, Throwable) => F[Unit]) =
     copy(onWriteFailure = onWriteFailure)
   def withMaxConcurrency(maxConcurrency: Int) = copy(maxConcurrency = maxConcurrency)
   def withReceiveBufferSize(receiveBufferSize: Int) = copy(receiveBufferSize = receiveBufferSize)
@@ -150,12 +150,12 @@ object EmberServerBuilder {
     val port: Int = 8000
 
     def httpApp[F[_]: Applicative]: HttpApp[F] = HttpApp.notFound[F]
-    def onError[F[_]]: Throwable => Response[F] = { (_: Throwable) =>
-      Response[F](Status.InternalServerError)
+    def onError[F[_]]: Throwable => Response = { (_: Throwable) =>
+      Response(Status.InternalServerError)
     }
     def onWriteFailure[F[_]: Applicative]
-        : (Option[Request[F]], Response[F], Throwable) => F[Unit] = {
-      case _: (Option[Request[F]], Response[F], Throwable) => Applicative[F].unit
+        : (Option[Request], Response, Throwable) => F[Unit] = {
+      case _: (Option[Request], Response, Throwable) => Applicative[F].unit
     }
     val maxConcurrency: Int = Int.MaxValue
     val receiveBufferSize: Int = 256 * 1024

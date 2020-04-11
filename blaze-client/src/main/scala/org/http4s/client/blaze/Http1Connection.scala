@@ -94,8 +94,8 @@ private final class Http1Connection[F[_]](
       case Error(_) => // NOOP: we don't reset on an error.
     }
 
-  def runRequest(req: Request[F], idleTimeoutF: F[TimeoutException]): F[Response[F]] =
-    F.suspend[Response[F]] {
+  def runRequest(req: Request, idleTimeoutF: F[TimeoutException]): F[Response] =
+    F.suspend[Response] {
       stageState.get match {
         case Idle =>
           if (stageState.compareAndSet(Idle, Running)) {
@@ -119,7 +119,7 @@ private final class Http1Connection[F[_]](
 
   override protected def contentComplete(): Boolean = parser.contentComplete()
 
-  private def executeRequest(req: Request[F], idleTimeoutF: F[TimeoutException]): F[Response[F]] = {
+  private def executeRequest(req: Request, idleTimeoutF: F[TimeoutException]): F[Response] = {
     logger.debug(s"Beginning request: ${req.method} ${req.uri}")
     validateRequest(req) match {
       case Left(e) =>
@@ -155,7 +155,7 @@ private final class Http1Connection[F[_]](
                 case t => F.delay(logger.error(t)("Error rendering request"))
               }
 
-            val response: F[Response[F]] =
+            val response: F[Response] =
               receiveResponse(mustClose, doesntHaveBody = req.method == Method.HEAD, idleTimeoutS)
 
             val res = writeRequest.start >> response
@@ -174,13 +174,13 @@ private final class Http1Connection[F[_]](
   private def receiveResponse(
       closeOnFinish: Boolean,
       doesntHaveBody: Boolean,
-      idleTimeoutS: F[Either[Throwable, Unit]]): F[Response[F]] =
-    F.async[Response[F]](cb =>
+      idleTimeoutS: F[Either[Throwable, Unit]]): F[Response] =
+    F.async[Response](cb =>
       readAndParsePrelude(cb, closeOnFinish, doesntHaveBody, "Initial Read", idleTimeoutS))
 
   // this method will get some data, and try to continue parsing using the implicit ec
   private def readAndParsePrelude(
-      cb: Callback[Response[F]],
+      cb: Callback[Response],
       closeOnFinish: Boolean,
       doesntHaveBody: Boolean,
       phase: String,
@@ -202,7 +202,7 @@ private final class Http1Connection[F[_]](
       buffer: ByteBuffer,
       closeOnFinish: Boolean,
       doesntHaveBody: Boolean,
-      cb: Callback[Response[F]],
+      cb: Callback[Response],
       idleTimeoutS: F[Either[Throwable, Unit]]): Unit =
     try {
       if (!parser.finishedResponseLine(buffer))
@@ -239,13 +239,13 @@ private final class Http1Connection[F[_]](
             reset()
           }
 
-        val (attributes, body): (Vault, EntityBody[F]) = if (doesntHaveBody) {
+        val (attributes, body): (Vault, EntityBody) = if (doesntHaveBody) {
           // responses to HEAD requests do not have a body
           cleanup()
           (Vault.empty, EmptyBody)
         } else {
           // We are to the point of parsing the body and then cleaning up
-          val (rawBody, _): (EntityBody[F], () => Future[ByteBuffer]) =
+          val (rawBody, _): (EntityBody, () => Future[ByteBuffer]) =
             collectBodyFromParser(buffer, terminationCondition _)
 
           // to collect the trailers we need a cleanup helper and an effect in the attribute map
@@ -288,7 +288,7 @@ private final class Http1Connection[F[_]](
         }
         cb(
           Right(
-            Response[F](
+            Response(
               status = status,
               httpVersion = httpVersion,
               headers = headers,
@@ -306,7 +306,7 @@ private final class Http1Connection[F[_]](
 
   /** Validates the request, attempting to fix it if possible,
     * returning an Exception if invalid, None otherwise */
-  @tailrec private def validateRequest(req: Request[F]): Either[Exception, Request[F]] = {
+  @tailrec private def validateRequest(req: Request): Either[Exception, Request] = {
     val minor: Int = getHttpMinor(req)
 
     // If we are HTTP/1.0, make sure HTTP/1.0 has no body or a Content-Length header
@@ -333,7 +333,7 @@ private final class Http1Connection[F[_]](
   }
 
   private def getChunkEncoder(
-      req: Request[F],
+      req: Request,
       closeHeader: Boolean,
       rr: StringWriter): Http1Writer[F] =
     getEncoder(req, rr, getHttpMinor(req), closeHeader)
@@ -348,9 +348,9 @@ private object Http1Connection {
   private case object Running extends State
   private final case class Error(exc: Throwable) extends State
 
-  private def getHttpMinor[F[_]](req: Request[F]): Int = req.httpVersion.minor
+  private def getHttpMinor[F[_]](req: Request): Int = req.httpVersion.minor
 
-  private def encodeRequestLine[F[_]](req: Request[F], writer: Writer): writer.type = {
+  private def encodeRequestLine[F[_]](req: Request, writer: Writer): writer.type = {
     val uri = req.uri
     writer << req.method << ' ' << uri.copy(scheme = None, authority = None, fragment = None) << ' ' << req.httpVersion << "\r\n"
     if (getHttpMinor(req) == 1 && Host

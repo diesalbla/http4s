@@ -27,7 +27,7 @@ object RequestLogger {
     Client { req =>
       if (!logBody)
         Resource.liftF(Logger
-          .logMessage[F, Request[F]](req)(logHeaders, logBody, redactHeadersWhen)(log(_))) *> client
+          .logMessage[F, Request](req)(logHeaders, logBody, redactHeadersWhen)(log(_))) *> client
           .run(req)
       else
         Resource.suspend {
@@ -42,7 +42,7 @@ object RequestLogger {
               // Cannot Be Done Asynchronously - Otherwise All Chunks May Not Be Appended Previous to Finalization
                 .observe(_.chunks.flatMap(s => Stream.eval_(vec.update(_ :+ s))))
                 .onFinalizeWeak(
-                  Logger.logMessage[F, Request[F]](req.withBodyStream(newBody))(
+                  Logger.logMessage[F, Request](req.withBodyStream(newBody))(
                     logHeaders,
                     logBody,
                     redactHeadersWhen)(log(_))

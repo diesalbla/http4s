@@ -2,7 +2,6 @@ package org.http4s
 
 import cats.{Eq, Monoid}
 import cats.data.Chain
-import cats.effect.Sync
 import cats.implicits._
 import org.http4s.headers._
 import org.http4s.internal.CollectionCompat
@@ -84,22 +83,17 @@ object UrlForm {
   def fromChain(values: Chain[(String, String)]): UrlForm =
     apply(values.toList: _*)
 
-  implicit def entityEncoder[F[_]](
-      implicit charset: Charset = DefaultCharset): EntityEncoder[F, UrlForm] =
+  implicit def entityEncoder(implicit charset: Charset = DefaultCharset): EntityEncoder[UrlForm] =
     EntityEncoder
-      .stringEncoder[F]
+      .stringEncoder
       .contramap[UrlForm](encodeString(charset))
       .withContentType(`Content-Type`(MediaType.application.`x-www-form-urlencoded`, charset))
 
-  implicit def entityDecoder[F[_]](
-      implicit F: Sync[F],
-      defaultCharset: Charset = DefaultCharset): EntityDecoder[F, UrlForm] =
+  implicit def entityDecoder(implicit defaultCharset: Charset = DefaultCharset): EntityDecoder[UrlForm] =
     EntityDecoder.decodeBy(MediaType.application.`x-www-form-urlencoded`) { m =>
-      DecodeResult(
-        EntityDecoder
-          .decodeString(m)
-          .map(decodeString(m.charset.getOrElse(defaultCharset)))
-      )
+      EntityDecoder
+        .decodeString(m)
+        .map(decodeString(m.charset.getOrElse(defaultCharset)))
     }
 
   implicit val eqInstance: Eq[UrlForm] = Eq.instance { (x: UrlForm, y: UrlForm) =>

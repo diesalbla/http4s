@@ -13,7 +13,7 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
   "AuthMiddleware" should {
     "fall back to onAuthFailure when authentication returns a Either.Left" in {
-      val authUser: Kleisli[IO, Request[IO], Either[String, User]] =
+      val authUser: Kleisli[IO, Request, Either[String, User]] =
         Kleisli.pure(Left("Unauthorized"))
 
       val onAuthFailure: AuthedRoutes[String, IO] =
@@ -28,14 +28,14 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
       val service = middleWare(authedRoutes)
 
-      service.orNotFound(Request[IO]()) must returnStatus(Forbidden)
-      service.orNotFound(Request[IO]()) must returnBody("Unauthorized")
+      service.orNotFound(Request()) must returnStatus(Forbidden)
+      service.orNotFound(Request()) must returnBody("Unauthorized")
     }
 
     "enrich the request with a user when authentication returns Either.Right" in {
       val userId: User = 42
 
-      val authUser: Kleisli[IO, Request[IO], Either[String, User]] =
+      val authUser: Kleisli[IO, Request, Either[String, User]] =
         Kleisli.pure(Right(userId))
 
       val onAuthFailure: AuthedRoutes[String, IO] =
@@ -50,14 +50,14 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
       val service = middleWare(authedRoutes)
 
-      service.orNotFound(Request[IO]()) must returnStatus(Ok)
-      service.orNotFound(Request[IO]()) must returnBody("42")
+      service.orNotFound(Request()) must returnStatus(Ok)
+      service.orNotFound(Request()) must returnBody("42")
     }
 
     "not find a route if requested with the wrong verb inside an authenticated route" in {
       val userId: User = 42
 
-      val authUser: Kleisli[IO, Request[IO], Either[String, User]] =
+      val authUser: Kleisli[IO, Request, Either[String, User]] =
         Kleisli.pure(Right(userId))
 
       val onAuthFailure: AuthedRoutes[String, IO] =
@@ -72,14 +72,14 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
       val service = middleWare(authedRoutes)
 
-      service.orNotFound(Request[IO](method = Method.POST)) must returnStatus(Ok)
-      service.orNotFound(Request[IO](method = Method.GET)) must returnStatus(NotFound)
+      service.orNotFound(Request(method = Method.POST)) must returnStatus(Ok)
+      service.orNotFound(Request(method = Method.GET)) must returnStatus(NotFound)
     }
 
     "return 200 for a matched and authenticated route" in {
       val userId: User = 42
 
-      val authUser: Kleisli[OptionT[IO, *], Request[IO], User] =
+      val authUser: Kleisli[OptionT[IO, *], Request, User] =
         Kleisli.pure(userId)
 
       val authedRoutes: AuthedRoutes[User, IO] =
@@ -91,13 +91,13 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
       val service = middleware(authedRoutes)
 
-      service.orNotFound(Request[IO](method = Method.POST)) must returnStatus(Ok)
+      service.orNotFound(Request(method = Method.POST)) must returnStatus(Ok)
     }
 
     "return 404 for an unmatched but authenticated route" in {
       val userId: User = 42
 
-      val authUser: Kleisli[OptionT[IO, *], Request[IO], User] =
+      val authUser: Kleisli[OptionT[IO, *], Request, User] =
         Kleisli.pure(userId)
 
       val authedRoutes: AuthedRoutes[User, IO] =
@@ -109,11 +109,11 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
       val service = middleware(authedRoutes)
 
-      service.orNotFound(Request[IO](method = Method.GET)) must returnStatus(NotFound)
+      service.orNotFound(Request(method = Method.GET)) must returnStatus(NotFound)
     }
 
     "return 401 for a matched, but unauthenticated route" in {
-      val authUser: Kleisli[OptionT[IO, *], Request[IO], User] =
+      val authUser: Kleisli[OptionT[IO, *], Request, User] =
         Kleisli.liftF(OptionT.none)
 
       val authedRoutes: AuthedRoutes[User, IO] =
@@ -125,11 +125,11 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
       val service = middleware(authedRoutes)
 
-      service.orNotFound(Request[IO](method = Method.POST)) must returnStatus(Unauthorized)
+      service.orNotFound(Request(method = Method.POST)) must returnStatus(Unauthorized)
     }
 
     "return 401 for an unmatched, unauthenticated route" in {
-      val authUser: Kleisli[OptionT[IO, *], Request[IO], User] =
+      val authUser: Kleisli[OptionT[IO, *], Request, User] =
         Kleisli.liftF(OptionT.none)
 
       val authedRoutes: AuthedRoutes[User, IO] =
@@ -141,13 +141,13 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
       val service = middleware(authedRoutes)
 
-      service.orNotFound(Request[IO](method = Method.GET)) must returnStatus(Unauthorized)
+      service.orNotFound(Request(method = Method.GET)) must returnStatus(Unauthorized)
     }
 
     "compose authedRoutesand not fall through" in {
       val userId: User = 42
 
-      val authUser: Kleisli[OptionT[IO, *], Request[IO], User] =
+      val authUser: Kleisli[OptionT[IO, *], Request, User] =
         Kleisli.pure(userId)
 
       val authedRoutes1: AuthedRoutes[User, IO] =
@@ -164,12 +164,12 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
       val service = middleware(authedRoutes1 <+> authedRoutes2)
 
-      service.orNotFound(Request[IO](method = Method.GET)) must returnStatus(Ok)
-      service.orNotFound(Request[IO](method = Method.POST)) must returnStatus(Ok)
+      service.orNotFound(Request(method = Method.GET)) must returnStatus(Ok)
+      service.orNotFound(Request(method = Method.POST)) must returnStatus(Ok)
     }
 
     "consume the entire request for an unauthenticated route for service composition" in {
-      val authUser: Kleisli[OptionT[IO, *], Request[IO], User] =
+      val authUser: Kleisli[OptionT[IO, *], Request, User] =
         Kleisli.liftF(OptionT.none)
 
       val authedRoutes: AuthedRoutes[User, IO] =
@@ -177,20 +177,20 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
           case POST -> Root as _ => Ok()
         }
 
-      val regularRoutes: HttpRoutes[IO] = HttpRoutes.pure(Response[IO](Ok))
+      val regularRoutes: HttpRoutes[IO] = HttpRoutes.pure(Response(Ok))
 
       val middleware = AuthMiddleware(authUser)
 
       val service = middleware(authedRoutes)
 
-      (service <+> regularRoutes).orNotFound(Request[IO](method = Method.POST)) must returnStatus(
+      (service <+> regularRoutes).orNotFound(Request(method = Method.POST)) must returnStatus(
         Unauthorized)
-      (service <+> regularRoutes).orNotFound(Request[IO](method = Method.GET)) must returnStatus(
+      (service <+> regularRoutes).orNotFound(Request(method = Method.GET)) must returnStatus(
         Unauthorized)
     }
 
     "not consume the entire request when using fall through" in {
-      val authUser: Kleisli[OptionT[IO, *], Request[IO], User] =
+      val authUser: Kleisli[OptionT[IO, *], Request, User] =
         Kleisli.liftF(OptionT.none)
 
       val authedRoutes: AuthedRoutes[User, IO] =
@@ -207,12 +207,12 @@ class AuthMiddlewareSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       val service = middleware(authedRoutes)
 
       //Unauthenticated
-      (service <+> regularRoutes).orNotFound(Request[IO](method = Method.POST)) must returnStatus(
+      (service <+> regularRoutes).orNotFound(Request(method = Method.POST)) must returnStatus(
         NotFound)
       //Matched normally
-      (service <+> regularRoutes).orNotFound(Request[IO](method = Method.GET)) must returnStatus(Ok)
+      (service <+> regularRoutes).orNotFound(Request(method = Method.GET)) must returnStatus(Ok)
       //Unmatched
-      (service <+> regularRoutes).orNotFound(Request[IO](method = Method.PUT)) must returnStatus(
+      (service <+> regularRoutes).orNotFound(Request(method = Method.PUT)) must returnStatus(
         NotFound)
     }
   }

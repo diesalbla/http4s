@@ -26,13 +26,13 @@ trait CirceInstances extends JawnInstances {
   protected def jsonDecodeError: (Json, NonEmptyList[DecodingFailure]) => DecodeFailure =
     CirceInstances.defaultJsonDecodeError
 
-  def jsonDecoderIncremental[F[_]: Sync]: EntityDecoder[F, Json] =
+  def jsonDecoderIncremental[F[_]: Sync]: EntityDecoder[Json] =
     this.jawnDecoder[F, Json]
 
-  def jsonDecoderByteBuffer[F[_]: Sync]: EntityDecoder[F, Json] =
+  def jsonDecoderByteBuffer[F[_]: Sync]: EntityDecoder[Json] =
     EntityDecoder.decodeBy(MediaType.application.json)(jsonDecoderByteBufferImpl[F])
 
-  private def jsonDecoderByteBufferImpl[F[_]: Sync](m: Media[F]): DecodeResult[F, Json] =
+  private def jsonDecoderByteBufferImpl[F[_]: Sync](m: Media): DecodeResult[Json] =
     EntityDecoder.collectBinary(m).subflatMap { chunk =>
       val bb = ByteBuffer.wrap(chunk.toArray)
       if (bb.hasRemaining)
@@ -42,13 +42,13 @@ trait CirceInstances extends JawnInstances {
     }
 
   // default cutoff value is based on benchmarks results
-  implicit def jsonDecoder[F[_]: Sync]: EntityDecoder[F, Json] =
+  implicit def jsonDecoder[F[_]: Sync]: EntityDecoder[Json] =
     jsonDecoderAdaptive(cutoff = 100000, MediaType.application.json)
 
   def jsonDecoderAdaptive[F[_]: Sync](
       cutoff: Long,
       r1: MediaRange,
-      rs: MediaRange*): EntityDecoder[F, Json] =
+      rs: MediaRange*): EntityDecoder[Json] =
     EntityDecoder.decodeBy(r1, rs: _*) { msg =>
       msg.contentLength match {
         case Some(contentLength) if contentLength < cutoff =>
@@ -57,12 +57,12 @@ trait CirceInstances extends JawnInstances {
       }
     }
 
-  def jsonOf[F[_]: Sync, A: Decoder]: EntityDecoder[F, A] =
+  def jsonOf[F[_]: Sync, A: Decoder]: EntityDecoder[A] =
     jsonOfWithMedia(MediaType.application.json)
 
   def jsonOfWithMedia[F[_], A](r1: MediaRange, rs: MediaRange*)(
       implicit F: Sync[F],
-      decoder: Decoder[A]): EntityDecoder[F, A] =
+      decoder: Decoder[A]): EntityDecoder[A] =
     jsonDecoderAdaptive[F](cutoff = 100000, r1, rs: _*).flatMapR { json =>
       decoder
         .decodeJson(json)
@@ -78,7 +78,7 @@ trait CirceInstances extends JawnInstances {
     * In case of a failure, returns an [[InvalidMessageBodyFailure]] with the cause containing
     * a [[DecodingFailures]] exception, from which the errors can be extracted.
     */
-  def accumulatingJsonOf[F[_], A](implicit F: Sync[F], decoder: Decoder[A]): EntityDecoder[F, A] =
+  def accumulatingJsonOf[F[_], A](implicit F: Sync[F], decoder: Decoder[A]): EntityDecoder[A] =
     jsonDecoder[F].flatMapR { json =>
       decoder
         .decodeAccumulating(json.hcursor)
@@ -88,44 +88,44 @@ trait CirceInstances extends JawnInstances {
         )
     }
 
-  implicit def jsonEncoder[F[_]]: EntityEncoder[F, Json] =
+  implicit def jsonEncoder[F[_]]: EntityEncoder[Json] =
     jsonEncoderWithPrinter(defaultPrinter)
 
   private def fromJsonToChunk(printer: Printer)(json: Json): Chunk[Byte] =
     Chunk.byteBuffer(printer.printToByteBuffer(json))
 
-  def jsonEncoderWithPrinter[F[_]](printer: Printer): EntityEncoder[F, Json] =
-    EntityEncoder[F, Chunk[Byte]]
+  def jsonEncoderWithPrinter[F[_]](printer: Printer): EntityEncoder[Json] =
+    EntityEncoder[Chunk[Byte]]
       .contramap[Json](fromJsonToChunk(printer))
       .withContentType(`Content-Type`(MediaType.application.json))
 
-  def jsonEncoderOf[F[_], A: Encoder]: EntityEncoder[F, A] =
+  def jsonEncoderOf[F[_], A: Encoder]: EntityEncoder[A] =
     jsonEncoderWithPrinterOf(defaultPrinter)
 
   def jsonEncoderWithPrinterOf[F[_], A](printer: Printer)(
-      implicit encoder: Encoder[A]): EntityEncoder[F, A] =
+      implicit encoder: Encoder[A]): EntityEncoder[A] =
     jsonEncoderWithPrinter[F](printer).contramap[A](encoder.apply)
 
-  implicit def streamJsonArrayEncoder[F[_]]: EntityEncoder[F, Stream[F, Json]] =
+  implicit def streamJsonArrayEncoder[F[_]]: EntityEncoder[Stream[IO, Json]] =
     streamJsonArrayEncoderWithPrinter(defaultPrinter)
 
   /** An [[EntityEncoder]] for a [[Stream]] of JSONs, which will encode it as a single JSON array. */
-  def streamJsonArrayEncoderWithPrinter[F[_]](printer: Printer): EntityEncoder[F, Stream[F, Json]] =
+  def streamJsonArrayEncoderWithPrinter[F[_]](printer: Printer): EntityEncoder[Stream[IO, Json]] =
     EntityEncoder
       .streamEncoder[F, Chunk[Byte]]
-      .contramap[Stream[F, Json]] { stream =>
+      .contramap[Stream[IO, Json]] { stream =>
         val jsons = stream.map(fromJsonToChunk(printer))
         CirceInstances.openBrace ++ jsons.intersperse(CirceInstances.comma) ++ CirceInstances.closeBrace
       }
       .withContentType(`Content-Type`(MediaType.application.json))
 
-  def streamJsonArrayEncoderOf[F[_], A: Encoder]: EntityEncoder[F, Stream[F, A]] =
+  def streamJsonArrayEncoderOf[F[_], A: Encoder]: EntityEncoder[Stream[IO, A]] =
     streamJsonArrayEncoderWithPrinterOf(defaultPrinter)
 
   /** An [[EntityEncoder]] for a [[Stream]] of values, which will encode it as a single JSON array. */
   def streamJsonArrayEncoderWithPrinterOf[F[_], A](printer: Printer)(
-      implicit encoder: Encoder[A]): EntityEncoder[F, Stream[F, A]] =
-    streamJsonArrayEncoderWithPrinter[F](printer).contramap[Stream[F, A]](_.map(encoder.apply))
+      implicit encoder: Encoder[A]): EntityEncoder[Stream[IO, A]] =
+    streamJsonArrayEncoderWithPrinter[F](printer).contramap[Stream[IO, A]](_.map(encoder.apply))
 
   implicit val encodeUri: Encoder[Uri] =
     Encoder.encodeString.contramap[Uri](_.toString)
@@ -135,7 +135,7 @@ trait CirceInstances extends JawnInstances {
       Uri.fromString(str).leftMap(_ => "Uri")
     }
 
-  implicit final def toMessageSynax[F[_]](req: Message[F]): CirceInstances.MessageSyntax[F] =
+  implicit final def toMessageSynax[F[_]](req: Message): CirceInstances.MessageSyntax[F] =
     new CirceInstances.MessageSyntax(req)
 }
 
@@ -221,7 +221,7 @@ object CirceInstances {
 
   // Extension methods.
 
-  private[circe] final class MessageSyntax[F[_]](private val req: Message[F]) extends AnyVal {
+  private[circe] final class MessageSyntax[F[_]](private val req: Message) extends AnyVal {
     def asJson(implicit F: JsonDecoder[F]): F[Json] =
       F.asJson(req)
 

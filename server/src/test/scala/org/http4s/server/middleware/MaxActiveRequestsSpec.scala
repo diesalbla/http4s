@@ -8,15 +8,15 @@ import org.http4s._
 import cats.effect.testing.specs2.CatsEffect
 
 class MaxActiveRequestsSpec extends Http4sSpec with CatsEffect {
-  val req = Request[IO]()
+  val req = Request()
 
   def routes(startedGate: Deferred[IO, Unit], deferred: Deferred[IO, Unit]) = Kleisli {
-    req: Request[IO] =>
+    req: Request =>
       req match {
-        case other if other.method == Method.PUT => OptionT.none[IO, Response[IO]]
+        case other if other.method == Method.PUT => OptionT.none[IO, Response]
         case _ =>
           OptionT.liftF(
-            startedGate.complete(()) >> deferred.get >> Response[IO](Status.Ok).pure[IO])
+            startedGate.complete(()) >> deferred.get >> Response(Status.Ok).pure[IO])
       }
   }
 

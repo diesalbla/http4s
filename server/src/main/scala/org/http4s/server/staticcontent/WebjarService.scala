@@ -109,8 +109,8 @@ object WebjarService {
     * @param request The Request
     * @return Either the the Asset, if it exist, or Pass
     */
-  private def serveWebjarAsset[F[_]: Sync: ContextShift](config: Config[F], request: Request[F])(
-      webjarAsset: WebjarAsset): OptionT[F, Response[F]] =
+  private def serveWebjarAsset[F[_]: Sync: ContextShift](config: Config[F], request: Request)(
+      webjarAsset: WebjarAsset): OptionT[F, Response] =
     StaticFile
       .fromResource(webjarAsset.pathInJar, config.blocker, Some(request))
       .semiflatMap(config.cacheStrategy.cache(request.pathInfo, _))

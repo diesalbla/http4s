@@ -21,28 +21,28 @@ class TranslateUriSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
   "UriTranslation" should {
     "match a matching request" in {
-      val req = Request[IO](uri = Uri(path = "/http4s/foo"))
+      val req = Request(uri = Uri(path = "/http4s/foo"))
       trans1(req) must returnStatus(Ok)
       trans2(req) must returnStatus(Ok)
       routes.orNotFound(req) must returnStatus(NotFound)
     }
 
     "not match a request missing the prefix" in {
-      val req = Request[IO](uri = Uri(path = "/foo"))
+      val req = Request(uri = Uri(path = "/foo"))
       trans1(req) must returnStatus(NotFound)
       trans2(req) must returnStatus(NotFound)
       routes.orNotFound(req) must returnStatus(Ok)
     }
 
     "not match a request with a different prefix" in {
-      val req = Request[IO](uri = Uri(path = "/http5s/foo"))
+      val req = Request(uri = Uri(path = "/http5s/foo"))
       trans1(req) must returnStatus(NotFound)
       trans2(req) must returnStatus(NotFound)
       routes.orNotFound(req) must returnStatus(NotFound)
     }
 
     "split the Uri into scriptName and pathInfo" in {
-      val req = Request[IO](uri = Uri(path = "/http4s/checkattr"))
+      val req = Request(uri = Uri(path = "/http4s/checkattr"))
       val resp = trans1(req).unsafeRunSync()
       resp.status must be(Ok)
       resp must haveBody("/http4s /checkattr")
@@ -52,7 +52,7 @@ class TranslateUriSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       val emptyPrefix = TranslateUri("")(routes)
       val slashPrefix = TranslateUri("/")(routes)
 
-      val req = Request[IO](uri = Uri(path = "/foo"))
+      val req = Request(uri = Uri(path = "/foo"))
       emptyPrefix.orNotFound(req) must returnStatus(Ok)
       slashPrefix.orNotFound(req) must returnStatus(Ok)
     }

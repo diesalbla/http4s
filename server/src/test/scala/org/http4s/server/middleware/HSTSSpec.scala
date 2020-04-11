@@ -13,7 +13,7 @@ class HSTSSpec extends Http4sSpec {
       Ok("pong")
   }
 
-  val req = Request[IO](Method.GET, Uri.uri("/"))
+  val req = Request(Method.GET, Uri.uri("/"))
 
   "HSTS" should {
     "add the Strict-Transport-Security header" in {

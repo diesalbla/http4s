@@ -90,13 +90,13 @@ object MetricsOps {
     * @param exclude For a given String, namely a path value, determine whether the value gets excluded.
     * @param excludedValue Indicates the String value to be supplied for an excluded path's field.
     * @param pathSeparator Value to use for separating the metrics fields' values
-    * @return Request[F] => Option[String]
+    * @return Request => Option[String]
     */
   def classifierFMethodWithOptionallyExcludedPath[F[_]](
       exclude: String => Boolean,
       excludedValue: String = "*",
       pathSeparator: String = "_"
-  ): Request[F] => Option[String] = { request: Request[F] =>
+  ): Request => Option[String] = { request: Request =>
     val initial: String = request.method.name
 
     val pathList: List[String] =
@@ -120,7 +120,7 @@ object MetricsOps {
   // The following was copied from
   // https://github.com/http4s/http4s/blob/v0.20.17/dsl/src/main/scala/org/http4s/dsl/impl/Path.scala#L56-L64,
   // and then modified.
-  private def requestToPathList[F[_]](request: Request[F]): List[String] = {
+  private def requestToPathList[F[_]](request: Request): List[String] = {
     val str: String = request.pathInfo
 
     if (str == "" || str == "/")

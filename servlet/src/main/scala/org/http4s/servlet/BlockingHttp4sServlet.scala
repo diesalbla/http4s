@@ -30,7 +30,7 @@ class BlockingHttp4sServlet[F[_]](
       .unsafeRunSync()
 
   private def handleRequest(
-      request: Request[F],
+      request: Request,
       servletResponse: HttpServletResponse,
       bodyWriter: BodyWriter[F]): F[Unit] =
     // Note: We're catching silly user errors in the lift => flatten.
@@ -46,7 +46,7 @@ class BlockingHttp4sServlet[F[_]](
         F.unit
       } else {
         logger.error(t)("Error processing request")
-        val response = Response[F](Status.InternalServerError)
+        val response = Response(Status.InternalServerError)
         // We don't know what I/O mode we're in here, and we're not rendering a body
         // anyway, so we use a NullBodyWriter.
         renderResponse(response, servletResponse, NullBodyWriter)

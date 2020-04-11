@@ -20,7 +20,7 @@ class GitHubService[F[_]: Sync](client: Client[F]) extends Http4sClientDsl[F] {
 
   case class AccessTokenResponse(access_token: String)
 
-  val authorize: Stream[F, Byte] = {
+  val authorize: Stream[IO, Byte] = {
     val uri = Uri
       .uri("https://github.com")
       .withPath("/login/oauth/authorize")
@@ -29,7 +29,7 @@ class GitHubService[F[_]: Sync](client: Client[F]) extends Http4sClientDsl[F] {
       .withQueryParam("scopes", "public_repo")
       .withQueryParam("state", "test_api")
 
-    client.stream(Request[F](uri = uri)).flatMap(_.body)
+    client.stream(Request(uri = uri)).flatMap(_.body)
   }
 
   def accessToken(code: String, state: String): F[String] = {
@@ -43,12 +43,12 @@ class GitHubService[F[_]: Sync](client: Client[F]) extends Http4sClientDsl[F] {
       .withQueryParam("state", state)
 
     client
-      .expect[AccessTokenResponse](Request[F](uri = uri))(jsonOf[F, AccessTokenResponse])
+      .expect[AccessTokenResponse](Request(uri = uri))(jsonOf[F, AccessTokenResponse])
       .map(_.access_token)
   }
 
   def userData(accessToken: String): F[String] = {
-    val request = Request[F](uri = Uri.uri("https://api.github.com/user"))
+    val request = Request(uri = Uri.uri("https://api.github.com/user"))
       .putHeaders(Header("Authorization", s"token $accessToken"))
 
     client.expect[String](request)

@@ -16,15 +16,15 @@ import cats.effect.Concurrent
   * preserved.  This is a naive, but correct, implementation of HEAD.  Routes
   * requiring more optimization should implement their own HEAD handler.
   */
-object DefaultHead {
-  def apply[F[_]: Functor, G[_]: Concurrent](http: Http[F, G])(implicit F: MonoidK[F]): Http[F, G] =
-    Kleisli { req =>
-      req.method match {
-        case HEAD => http(req) <+> http(req.withMethod(GET)).map(drainBody[G])
-        case _ => http(req)
-      }
-    }
+class DefaultHead(http: Http) extends Http {
+  def apply(req: Request): IO[Response]  
+  req.method match {
+    case HEAD => http(req) <+> http(req.withMethod(GET)).map(drainBody)
+    case _ => http(req)
+  }
 
-  private[this] def drainBody[G[_]: Concurrent](response: Response[G]): Response[G] =
-    response.copy(body = response.body.interruptWhen[G](Stream(true)).drain)
+  private[this] def drainBody(response: Response): Response =
+    response.copy(body = response.body.interruptWhen(Stream(true)).drain)
+}
+
 }

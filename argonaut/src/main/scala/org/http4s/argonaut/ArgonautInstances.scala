@@ -11,14 +11,14 @@ import org.typelevel.jawn.ParseException
 import org.http4s.argonaut.ArgonautInstances.DecodeFailureMessage
 
 trait ArgonautInstances extends JawnInstances {
-  implicit def jsonDecoder[F[_]: Sync]: EntityDecoder[F, Json] =
+  implicit def jsonDecoder: EntityDecoder[Json] =
     jawnDecoder
 
   protected def jsonDecodeError: (Json, DecodeFailureMessage, CursorHistory) => DecodeFailure =
     ArgonautInstances.defaultJsonDecodeError
 
-  def jsonOf[F[_]: Sync, A](implicit decoder: DecodeJson[A]): EntityDecoder[F, A] =
-    jsonDecoder[F].flatMapR { json =>
+  def jsonOf[A](implicit decoder: DecodeJson[A]): EntityDecoder[A] =
+    jsonDecoder.flatMapR { json =>
       decoder
         .decodeJson(json)
         .fold(
@@ -29,20 +29,20 @@ trait ArgonautInstances extends JawnInstances {
 
   protected def defaultPrettyParams: PrettyParams = PrettyParams.nospace
 
-  implicit def jsonEncoder[F[_]]: EntityEncoder[F, Json] =
+  implicit def jsonEncoder[F[_]]: EntityEncoder[Json] =
     jsonEncoderWithPrettyParams[F](defaultPrettyParams)
 
-  def jsonEncoderWithPrettyParams[F[_]](prettyParams: PrettyParams): EntityEncoder[F, Json] =
+  def jsonEncoderWithPrettyParams[F[_]](prettyParams: PrettyParams): EntityEncoder[Json] =
     EntityEncoder
       .stringEncoder(Charset.`UTF-8`)
       .contramap[Json](prettyParams.pretty)
       .withContentType(`Content-Type`(MediaType.application.json))
 
-  def jsonEncoderOf[F[_], A](implicit encoder: EncodeJson[A]): EntityEncoder[F, A] =
+  def jsonEncoderOf[F[_], A](implicit encoder: EncodeJson[A]): EntityEncoder[A] =
     jsonEncoderWithPrinterOf(defaultPrettyParams)
 
   def jsonEncoderWithPrinterOf[F[_], A](prettyParams: PrettyParams)(
-      implicit encoder: EncodeJson[A]): EntityEncoder[F, A] =
+      implicit encoder: EncodeJson[A]): EntityEncoder[A] =
     jsonEncoderWithPrettyParams[F](prettyParams).contramap[A](encoder.encode)
 
   implicit val uriCodec: CodecJson[Uri] = CodecJson(
@@ -55,7 +55,7 @@ trait ArgonautInstances extends JawnInstances {
             .fold(err => ArgDecodeResult.fail(err.toString, c.history), ArgDecodeResult.ok))
   )
 
-  implicit class MessageSyntax[F[_]: Sync](self: Message[F]) {
+  implicit class MessageSyntax[F[_]: Sync](self: Message) {
     def decodeJson[A](implicit decoder: DecodeJson[A]): F[A] =
       self.as(implicitly, jsonOf[F, A])
   }

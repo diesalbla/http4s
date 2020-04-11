@@ -36,7 +36,7 @@ sealed abstract case class Status private (code: Int)(
   override def render(writer: org.http4s.util.Writer): writer.type = writer << code << ' ' << reason
 
   /** Helpers for for matching against a [[Response]] */
-  def unapply[F[_]](msg: Response[F]): Option[Response[F]] =
+  def unapply(msg: Response): Option[Response] =
     if (msg.status == this) Some(msg) else None
 }
 
@@ -50,7 +50,7 @@ object Status {
     def isSuccess: Boolean
 
     /** Match a [[Response]] based on [[Status]] category */
-    final def unapply[F[_]](resp: Response[F]): Option[Response[F]] =
+    final def unapply[F[_]](resp: Response): Option[Response] =
       resp match {
         case Response(status, _, _, _, _) if status.responseClass == this => Some(resp)
         case _ => None

@@ -7,11 +7,11 @@ import org.http4s.headers._
 import org.specs2.mutable.Specification
 
 class ResponderSpec extends Specification {
-  val resp = Response[IO](Status.Ok)
+  val resp = Response(Status.Ok)
 
   "Responder" should {
     "Change status" in {
-      val resp = Response[IO](Status.Ok)
+      val resp = Response(Status.Ok)
 
       resp.status must_== (Status.Ok)
 

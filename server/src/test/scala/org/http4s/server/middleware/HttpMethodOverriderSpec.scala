@@ -54,14 +54,14 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       .map(om => s"[$om ~> $reqMethod] => $msg")
       .getOrElse(s"[$reqMethod] => $msg")
 
-  private def responseText[F[_]](msg: String, req: Request[F]): String = {
+  private def responseText[F[_]](msg: String, req: Request): String = {
     val overriddenMethod = req.attributes.lookup(HttpMethodOverrider.overriddenMethodAttrKey)
     mkResponseText(msg, req.method, overriddenMethod)
   }
 
   "MethodOverrider middleware" should {
     "ignore method override if request method not in the overridable method list" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withMethod(GET)
         .withHeaders(Header(overrideHeader, "PUT"))
       val app = HttpMethodOverrider(testApp, noMethodHeaderOverriderConfig)
@@ -73,7 +73,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "override request method when using header method overrider strategy if override method provided" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withMethod(POST)
         .withHeaders(Header(overrideHeader, "PUT"))
       val app = HttpMethodOverrider(testApp, postHeaderOverriderConfig)
@@ -85,7 +85,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "not override request method when using header method overrider strategy if override method not provided" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withMethod(DELETE)
       val app = HttpMethodOverrider(testApp, deleteHeaderOverriderConfig)
 
@@ -96,7 +96,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "override request method and store the original method when using query method overrider strategy" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id?_method=PUT"))
+      val req = Request(uri = Uri.uri("/resources/id?_method=PUT"))
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postQueryOverriderConfig)
 
@@ -107,7 +107,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "not override request method when using query method overrider strategy if override method not provided" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withMethod(DELETE)
       val app = HttpMethodOverrider(testApp, deleteQueryOverriderConfig)
 
@@ -119,7 +119,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
     "override request method and store the original method when using form method overrider strategy" in {
       val urlForm = UrlForm("foo" -> "bar", overrideField -> "PUT")
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withEntity(urlForm)
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postFormOverriderConfig)
@@ -132,7 +132,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
     "not override request method when using form method overrider strategy if override method not provided" in {
       val urlForm = UrlForm("foo" -> "bar")
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withEntity(urlForm)
         .withMethod(DELETE)
       val app = HttpMethodOverrider(testApp, deleteFormOverriderConfig)
@@ -144,7 +144,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "return 404 when using header method overrider strategy if override method provided is not recognized" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withMethod(POST)
         .withHeaders(Header(overrideHeader, "INVALID"))
       val app = HttpMethodOverrider(testApp, postHeaderOverriderConfig)
@@ -154,7 +154,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "return 404 when using query method overrider strategy if override method provided is not recognized" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id?_method=INVALID"))
+      val req = Request(uri = Uri.uri("/resources/id?_method=INVALID"))
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postQueryOverriderConfig)
 
@@ -164,7 +164,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
     "return 404 when using form method overrider strategy if override method provided is not recognized" in {
       val urlForm = UrlForm("foo" -> "bar", overrideField -> "INVALID")
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withEntity(urlForm)
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postFormOverriderConfig)
@@ -174,7 +174,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "return 400 when using header method overrider strategy if override method provided is duped" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withMethod(POST)
         .withHeaders(Header(overrideHeader, ""))
       val app = HttpMethodOverrider(testApp, postHeaderOverriderConfig)
@@ -184,7 +184,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "return 400 when using query method overrider strategy if override method provided is duped" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id?_method="))
+      val req = Request(uri = Uri.uri("/resources/id?_method="))
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postQueryOverriderConfig)
 
@@ -194,7 +194,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
     "return 400 when using form method overrider strategy if override method provided is duped" in {
       val urlForm = UrlForm("foo" -> "bar", overrideField -> "")
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withEntity(urlForm)
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postFormOverriderConfig)
@@ -204,7 +204,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "override request method when using header method overrider strategy and be case insensitive" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withMethod(POST)
         .withHeaders(Header(overrideHeader, "pUt"))
       val app = HttpMethodOverrider(testApp, postHeaderOverriderConfig)
@@ -216,7 +216,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "override request method when using query method overrider strategy and be case insensitive" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id?_method=pUt"))
+      val req = Request(uri = Uri.uri("/resources/id?_method=pUt"))
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postQueryOverriderConfig)
 
@@ -228,7 +228,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
     "override request method when form query method overrider strategy and be case insensitive" in {
       val urlForm = UrlForm("foo" -> "bar", overrideField -> "pUt")
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withEntity(urlForm)
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postFormOverriderConfig)
@@ -240,7 +240,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "updates vary header when using query method overrider strategy and vary header comes pre-populated" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withMethod(POST)
         .withHeaders(Header(overrideHeader, "PUT"))
       val app = HttpMethodOverrider(testApp, postHeaderOverriderConfig)
@@ -254,7 +254,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "set vary header when using header method overrider strategy and vary header has not been set" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withMethod(POST)
         .withHeaders(Header(overrideHeader, "DELETE"))
       val app = HttpMethodOverrider(testApp, postHeaderOverriderConfig)
@@ -268,7 +268,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "not set vary header when using query method overrider strategy and vary header has not been set" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id?_method=DELETE"))
+      val req = Request(uri = Uri.uri("/resources/id?_method=DELETE"))
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postQueryOverriderConfig)
 
@@ -281,7 +281,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "not update vary header when using query method overrider strategy and vary header comes pre-populated" in {
-      val req = Request[IO](uri = Uri.uri("/resources/id?_method=PUT"))
+      val req = Request(uri = Uri.uri("/resources/id?_method=PUT"))
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postQueryOverriderConfig)
 
@@ -295,7 +295,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
     "not set vary header when using form method overrider strategy and vary header has not been set" in {
       val urlForm = UrlForm("foo" -> "bar", overrideField -> "DELETE")
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withEntity(urlForm)
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postFormOverriderConfig)
@@ -310,7 +310,7 @@ class HttpMethodOverriderSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
     "not update vary header when using form method overrider strategy and vary header comes pre-populated" in {
       val urlForm = UrlForm("foo" -> "bar", overrideField -> "PUT")
-      val req = Request[IO](uri = Uri.uri("/resources/id"))
+      val req = Request(uri = Uri.uri("/resources/id"))
         .withEntity(urlForm)
         .withMethod(POST)
       val app = HttpMethodOverrider(testApp, postFormOverriderConfig)

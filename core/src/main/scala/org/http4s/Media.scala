@@ -1,18 +1,16 @@
 package org.http4s
 
-import cats.MonadError
-import cats.implicits._
+import cats.effect.IO
 import fs2.Stream
 import fs2.text.utf8Decode
 import org.http4s.headers._
 import org.http4s.util.decode
 
-trait Media[F[_]] {
-  def body: EntityBody[F]
+trait Media {
+  def body: EntityBody
   def headers: Headers
-  def covary[F2[x] >: F[x]]: Media[F2]
 
-  final def bodyAsText(implicit defaultCharset: Charset = DefaultCharset): Stream[F, String] =
+  final def bodyAsText(implicit defaultCharset: Charset = DefaultCharset): Stream[IO, String] =
     charset.getOrElse(defaultCharset) match {
       case Charset.`UTF-8` =>
         // suspect this one is more efficient, though this is superstition
@@ -38,7 +36,7 @@ trait Media[F[_]] {
     * @tparam T type of the result
     * @return the effect which will generate the `DecodeResult[T]`
     */
-  final def attemptAs[T](implicit decoder: EntityDecoder[F, T]): DecodeResult[F, T] =
+  final def attemptAs[T](implicit decoder: EntityDecoder[T]): DecodeResult[T] =
     decoder.decode(this, strict = false)
 
   /** Decode the [[Media]] to the specified type
@@ -49,17 +47,14 @@ trait Media[F[_]] {
     * @tparam A type of the result
     * @return the effect which will generate the A
     */
-  final def as[A](implicit F: MonadError[F, Throwable], decoder: EntityDecoder[F, A]): F[A] =
+  final def as[A](implicit decoder: EntityDecoder[A]): IO[A] =
     // n.b. this will be better with redeem in Cats-2.0
-    attemptAs.leftWiden[Throwable].rethrowT
+    attemptAs.flatMap(_.fold(IO.raiseError, IO.pure))
 }
 
 object Media {
-  def apply[F[_]](b: EntityBody[F], h: Headers): Media[F] = new Media[F] {
+  def apply(b: EntityBody, h: Headers): Media = new Media {
     def body = b
-
     def headers: Headers = h
-
-    override def covary[F2[x] >: F[x]]: Media[F2] = this.asInstanceOf[Media[F2]]
   }
 }

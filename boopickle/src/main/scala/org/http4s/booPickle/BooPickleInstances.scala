@@ -16,8 +16,7 @@ import scala.util.{Failure, Success}
   * Note that the media type is set for application/octet-stream
   */
 trait BooPickleInstances {
-  private def booDecoderByteBuffer[F[_]: Sync, A](m: Media[F])(
-      implicit pickler: Pickler[A]): DecodeResult[F, A] =
+   private def booDecoderByteBuffer[A](m: Media)(implicit pickler: Pickler[A]): DecodeResult[A] =
     EntityDecoder.collectBinary(m).subflatMap { chunk =>
       val bb = ByteBuffer.wrap(chunk.toArray)
       if (bb.hasRemaining) {
@@ -32,13 +31,13 @@ trait BooPickleInstances {
   /**
     * Create an `EntityDecoder` for `A` given a `Pickler[A]`
     */
-  def booOf[F[_]: Sync, A: Pickler]: EntityDecoder[F, A] =
+  def booOf[F[_]: Sync, A: Pickler]: EntityDecoder[A] =
     EntityDecoder.decodeBy(MediaType.application.`octet-stream`)(booDecoderByteBuffer[F, A])
 
   /**
     * Create an `EntityEncoder` for `A` given a `Pickler[A]`
     */
-  def booEncoderOf[F[_], A: Pickler]: EntityEncoder[F, A] =
+  def booEncoderOf[F[_], A: Pickler]: EntityEncoder[A] =
     chunkEncoder[F]
       .contramap[A] { v =>
         Chunk.ByteBuffer(Pickle.intoBytes(v))

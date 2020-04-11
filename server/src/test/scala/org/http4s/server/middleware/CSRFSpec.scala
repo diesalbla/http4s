@@ -33,7 +33,7 @@ class CSRFSpec extends Http4sSpec {
   val cookieName = "csrf-token"
   val headerName = CaseInsensitiveString("X-Csrf-Token")
 
-  val defaultOriginCheck: Request[IO] => Boolean =
+  val defaultOriginCheck: Request => Boolean =
     CSRF.defaultOriginCheck[IO](_, "localhost", Uri.Scheme.http, None)
 
   val dummyRoutes: HttpApp[IO] = HttpRoutes
@@ -45,10 +45,10 @@ class CSRFSpec extends Http4sSpec {
     }
     .orNotFound
 
-  val dummyRequest: Request[IO] =
-    Request[IO](method = Method.POST).putHeaders(Header("Origin", "http://localhost"))
+  val dummyRequest: Request =
+    Request(method = Method.POST).putHeaders(Header("Origin", "http://localhost"))
 
-  val passThroughRequest: Request[IO] = Request[IO]()
+  val passThroughRequest: Request = Request()
 
   val csrf: CSRF[IO, IO] = CSRF
     .withGeneratedKey[IO, IO](defaultOriginCheck)
@@ -99,7 +99,7 @@ class CSRFSpec extends Http4sSpec {
     }
 
     "Extract a valid token from header or form field when form enabled" in {
-      def check(f: (String, Request[IO]) => Request[IO]): IO[Response[IO]] =
+      def check(f: (String, Request) => Request): IO[Response] =
         for {
           token <- csrfForm.generateToken[IO]
           ts = unlift(token)
@@ -120,9 +120,9 @@ class CSRFSpec extends Http4sSpec {
     }
 
     "pass a request with valid origin a request without any origin, even with a token" in {
-      val program: IO[Response[IO]] = for {
+      val program: IO[Response] = for {
         token <- csrf.generateToken[IO]
-        req = csrf.embedInRequestCookie(Request[IO](POST), token)
+        req = csrf.embedInRequestCookie(Request(POST), token)
         v <- csrf.checkCSRF(req, dummyRoutes.run(req))
       } yield v
 
@@ -167,7 +167,7 @@ class CSRFSpec extends Http4sSpec {
     }
 
     "validate for the correct csrf token and origin" in {
-      val program: IO[Response[IO]] = for {
+      val program: IO[Response] = for {
         token <- csrf.generateToken[IO]
         res <- csrf.validate()(dummyRoutes)(
           dummyRequest
@@ -180,12 +180,12 @@ class CSRFSpec extends Http4sSpec {
     }
 
     "validate for the correct csrf token, no origin but with a referrer" in {
-      val program: IO[Response[IO]] =
+      val program: IO[Response] =
         for {
           token <- csrf.generateToken[IO]
           res <- csrf.validate()(dummyRoutes)(
             csrf.embedInRequestCookie(
-              Request[IO](POST)
+              Request(POST)
                 .putHeaders(
                   Header(headerName.value, unlift(token)),
                   Referer(Uri.unsafeFromString("http://localhost/lol"))),
@@ -197,9 +197,9 @@ class CSRFSpec extends Http4sSpec {
     }
 
     "fail a request without any origin, even with a token" in {
-      val program: IO[Response[IO]] = for {
+      val program: IO[Response] = for {
         token <- csrf.generateToken[IO]
-        req = csrf.embedInRequestCookie(Request[IO](POST), token)
+        req = csrf.embedInRequestCookie(Request(POST), token)
         v <- csrf.checkCSRF(req, dummyRoutes.run(req))
       } yield v
 
@@ -210,7 +210,7 @@ class CSRFSpec extends Http4sSpec {
       (for {
         token <- csrf.generateToken[IO]
         res <- csrf.validate()(dummyRoutes)(
-          Request[IO](POST)
+          Request(POST)
             .putHeaders(
               Header(headerName.value, unlift(token)),
               Header("Origin", "http://example.com"),

@@ -26,7 +26,7 @@ import org.http4s.metrics.TerminationType.{Abnormal, Error, Timeout}
   * import org.http4s.client.metrics.core.Metrics
   * import org.http4s.client.metrics.dropwizard.Dropwizard
   *
-  * val classifierFunc = (r: Request[IO]) => Some(r.method.toString.toLowerCase)
+  * val classifierFunc = (r: Request) => Some(r.method.toString.toLowerCase)
   * val meteredClient = Metrics(Dropwizard(registry, "client"), classifierFunc)(client)
   * }}}
   *

@@ -81,7 +81,7 @@ private class Http2NodeStage[F[_]](
     }
 
   /** collect the body: a maxlen < 0 is interpreted as undefined */
-  private def getBody(maxlen: Long): EntityBody[F] = {
+  private def getBody(maxlen: Long): EntityBody = {
     var complete = false
     var bytesRead = 0L
 
@@ -225,7 +225,7 @@ private class Http2NodeStage[F[_]](
     }
   }
 
-  private def renderResponse(resp: Response[F]): F[Unit] = {
+  private def renderResponse(resp: Response): F[Unit] = {
     val hs = new ArrayBuffer[(String, String)](16)
     hs += PseudoHeaders.Status -> Integer.toString(resp.status.code)
     resp.headers.foreach { h =>
@@ -246,7 +246,7 @@ private class Http2NodeStage[F[_]](
     }
   }
 
-  private[this] val raceTimeout: Request[F] => F[Response[F]] =
+  private[this] val raceTimeout: Request => F[Response] =
     responseHeaderTimeout match {
       case finite: FiniteDuration =>
         val timeoutResponse = timer.sleep(finite).as(Response.timeout[F])

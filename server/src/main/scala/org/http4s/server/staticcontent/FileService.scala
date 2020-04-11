@@ -18,7 +18,7 @@ import scala.util.{Failure, Success, Try}
 object FileService {
   private[this] val logger = getLogger
 
-  type PathCollector[F[_]] = (File, Config[F], Request[F]) => OptionT[F, Response[F]]
+  type PathCollector[F[_]] = (File, Config[F], Request) => OptionT[F, Response]
 
   /** [[org.http4s.server.staticcontent.FileService]] configuration
     *
@@ -90,15 +90,15 @@ object FileService {
     }
   }
 
-  private def filesOnly[F[_]](file: File, config: Config[F], req: Request[F])(
+  private def filesOnly[F[_]](file: File, config: Config[F], req: Request)(
       implicit F: Sync[F],
-      cs: ContextShift[F]): OptionT[F, Response[F]] =
-    OptionT(F.suspend {
+      cs: ContextShift[F]): OptionT[F, Response] =
+    OptionT(IO.suspend {
       if (file.isDirectory)
         StaticFile
           .fromFile(new File(file, "index.html"), config.blocker, Some(req))
           .value
-      else if (!file.isFile) F.pure(None)
+      else if (!file.isFile) IO.pure(None)
       else
         OptionT(getPartialContentFile(file, config, req))
           .orElse(
@@ -116,9 +116,9 @@ object FileService {
     })
 
   // Attempt to find a Range header and collect only the subrange of content requested
-  private def getPartialContentFile[F[_]](file: File, config: Config[F], req: Request[F])(
+  private def getPartialContentFile[F[_]](file: File, config: Config[F], req: Request)(
       implicit F: Sync[F],
-      cs: ContextShift[F]): F[Option[Response[F]]] =
+      cs: ContextShift[F]): F[Option[Response]] =
     req.headers.get(Range) match {
       case Some(Range(RangeUnit.Bytes, NonEmptyList(SubRange(s, e), Nil))) =>
         if (validRange(s, e, file.length)) {
@@ -146,7 +146,7 @@ object FileService {
         } else {
           F.delay(file.length()).map { size =>
             Some(
-              Response[F](
+              Response(
                 status = Status.RangeNotSatisfiable,
                 headers = Headers
                   .of(AcceptRangeHeader, `Content-Range`(SubRange(0, size - 1), Some(size)))))

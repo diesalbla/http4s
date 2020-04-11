@@ -15,7 +15,7 @@ class StaticHeadersSpec extends Http4sSpec {
 
   "NoCache middleware" should {
     "add a no-cache header to a response" in {
-      val req = Request[IO](uri = uri("/request"))
+      val req = Request(uri = uri("/request"))
       val resp = StaticHeaders.`no-cache`(testService).orNotFound(req)
 
       val check =

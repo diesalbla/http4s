@@ -35,7 +35,7 @@ val service = HttpRoutes.of[IO] {
     Ok()
 } 
 
-val request = Request[IO](Method.GET, uri"/")
+val request = Request(Method.GET, uri"/")
 
 service.orNotFound(request).unsafeRunSync
 ```
@@ -45,7 +45,7 @@ That didn't do all that much. Lets build out our CSRF Middleware by creating a `
 ```tut:silent
 val cookieName = "csrf-token"
 val key  = CSRF.generateSigningKey[IO].unsafeRunSync
-val defaultOriginCheck: Request[IO] => Boolean =
+val defaultOriginCheck: Request => Boolean =
   CSRF.defaultOriginCheck[IO](_, "localhost", Uri.Scheme.http, None)
 val csrfBuilder = CSRF[IO,IO](key, defaultOriginCheck)
 ```
@@ -59,8 +59,8 @@ val csrf = csrfBuilder.withCookieName(cookieName).withCookieDomain(Some("localho
 
 Now we need to wrap this around our service! We're gonna start with a safe call
 ```tut:book
-val dummyRequest: Request[IO] =
-    Request[IO](method = Method.GET).putHeaders(Header("Origin", "http://localhost"))
+val dummyRequest: Request =
+    Request(method = Method.GET).putHeaders(Header("Origin", "http://localhost"))
 val resp = csrf.validate()(service.orNotFound)(dummyRequest).unsafeRunSync()
 ```
 Notice how the response has the CSRF cookies added. How easy was
@@ -78,8 +78,8 @@ and send it up in our POST. I've also added the response cookie as a RequestCook
 the browser would send this up with our request, but I needed to do it manually for the purpose of this demo.
 ```tut:book
 val cookie = resp.cookies.head
-val dummyPostRequest: Request[IO] =
-    Request[IO](method = Method.POST).putHeaders(
+val dummyPostRequest: Request =
+    Request(method = Method.POST).putHeaders(
       Header("Origin", "http://localhost"),
       Header("X-Csrf-Token", cookie.content)
     ).addCookie(RequestCookie(cookie.name,cookie.content))

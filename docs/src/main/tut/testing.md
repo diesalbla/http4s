@@ -48,7 +48,7 @@ For testing, let's define a `check` function:
 
 ```tut:book
 // Return true if match succeeds; otherwise false
-def check[A](actual:        IO[Response[IO]], 
+def check[A](actual:        IO[Response], 
             expectedStatus: Status, 
             expectedBody:   Option[A])(
     implicit ev: EntityDecoder[IO, A]
@@ -71,7 +71,7 @@ val success: UserRepo[IO] = new UserRepo[IO] {
   def find(id: String): IO[Option[User]] = IO.pure(Some(User("johndoe", 42)))
 }
 
-val response: IO[Response[IO]] = service[IO](success).orNotFound.run(
+val response: IO[Response] = service[IO](success).orNotFound.run(
   Request(method = Method.GET, uri = uri"/user/not-used" )
 )
 
@@ -90,7 +90,7 @@ val foundNone: UserRepo[IO] = new UserRepo[IO] {
   def find(id: String): IO[Option[User]] = IO.pure(None)
 } 
 
-val response: IO[Response[IO]] = service[IO](foundNone).orNotFound.run(
+val response: IO[Response] = service[IO](foundNone).orNotFound.run(
   Request(method = Method.GET, uri = uri"/user/not-used" )
 )
 
@@ -104,7 +104,7 @@ val doesNotMatter: UserRepo[IO] = new UserRepo[IO] {
   def find(id: String): IO[Option[User]] = IO.raiseError(new RuntimeException("Should not get called!"))
 } 
 
-val response: IO[Response[IO]] = service[IO](doesNotMatter).orNotFound.run(
+val response: IO[Response] = service[IO](doesNotMatter).orNotFound.run(
   Request(method = Method.GET, uri = uri"/not-a-matching-path" )
 )
 

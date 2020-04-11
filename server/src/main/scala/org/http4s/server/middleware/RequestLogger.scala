@@ -36,7 +36,7 @@ object RequestLogger {
     Kleisli { req =>
       if (!logBody) {
         def logAct =
-          Logger.logMessage[F, Request[F]](req)(logHeaders, logBody, redactHeadersWhen)(log)
+          Logger.logMessage[F, Request](req)(logHeaders, logBody, redactHeadersWhen)(log)
         // This construction will log on Any Error/Cancellation
         // The Completed Case is Unit, as we rely on the semantics of G
         // As None Is Successful, but we oly want to log on Some
@@ -60,12 +60,12 @@ object RequestLogger {
                 .observe(_.chunks.flatMap(c => Stream.eval_(vec.update(_ :+ c))))
             )
             def logRequest: F[Unit] =
-              Logger.logMessage[F, Request[F]](req.withBodyStream(newBody))(
+              Logger.logMessage[F, Request](req.withBodyStream(newBody))(
                 logHeaders,
                 logBody,
                 redactHeadersWhen
               )(log)
-            val response: G[Response[F]] =
+            val response: G[Response] =
               http(changedRequest)
                 .guaranteeCase {
                   case ExitCase.Completed => G.unit

@@ -30,10 +30,10 @@ private[ember] object Util {
       timeout: FiniteDuration,
       shallTimeout: F[Boolean],
       chunkSize: Int
-  )(implicit F: ApplicativeError[F, Throwable], C: Clock[F]): Stream[F, Byte] = {
-    def whenWontTimeout: Stream[F, Byte] =
+  )(implicit F: ApplicativeError[F, Throwable], C: Clock[F]): Stream[IO, Byte] = {
+    def whenWontTimeout: Stream[IO, Byte] =
       socket.reads(chunkSize, None)
-    def whenMayTimeout(remains: FiniteDuration): Stream[F, Byte] =
+    def whenMayTimeout(remains: FiniteDuration): Stream[IO, Byte] =
       if (remains <= 0.millis)
         Stream
           .eval(C.realTime(MILLISECONDS))
@@ -46,13 +46,13 @@ private[ember] object Util {
           start <- Stream.eval(C.realTime(MILLISECONDS))
           read <- Stream.eval(socket.read(chunkSize, Some(remains)))
           end <- Stream.eval(C.realTime(MILLISECONDS))
-          out <- read.fold[Stream[F, Byte]](
+          out <- read.fold[Stream[IO, Byte]](
             Stream.empty
           )(
             Stream.chunk(_).covary[F] ++ go(remains - (end - start).millis)
           )
         } yield out
-    def go(remains: FiniteDuration): Stream[F, Byte] =
+    def go(remains: FiniteDuration): Stream[IO, Byte] =
       Stream
         .eval(shallTimeout)
         .ifM(

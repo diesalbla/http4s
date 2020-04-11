@@ -162,7 +162,7 @@ fiber.cancel.unsafeRunSync()
 ### Running your service as an `App`
 
 Every `ServerBuilder[F]` has a `.serve` method that returns a
-`Stream[F, ExitCode]`.  This stream runs forever without emitting
+`Stream[IO, ExitCode]`.  This stream runs forever without emitting
 any output.  When this process is run with `.unsafeRunSync` on the
 main thread, it blocks forever, keeping the JVM (and your server)
 alive until the JVM is killed.

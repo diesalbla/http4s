@@ -34,7 +34,7 @@ class ChunkAggregatorSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       HttpApp.liftF(response(body, transferCodings))
 
     def checkAppResponse(app: HttpApp[IO])(
-        responseCheck: Response[IO] => MatchResult[Any]): MatchResult[Any] =
+        responseCheck: Response => MatchResult[Any]): MatchResult[Any] =
       ChunkAggregator.httpApp(app).run(Request()).unsafeRunSync must beLike {
         case response =>
           response.status must_== Ok
@@ -42,7 +42,7 @@ class ChunkAggregatorSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       }
 
     def checkRoutesResponse(routes: HttpRoutes[IO])(
-        responseCheck: Response[IO] => MatchResult[Any]): MatchResult[Any] =
+        responseCheck: Response => MatchResult[Any]): MatchResult[Any] =
       ChunkAggregator.httpRoutes(routes).run(Request()).value.unsafeRunSync must beSome
         .like {
           case response =>
@@ -60,7 +60,7 @@ class ChunkAggregatorSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     "handle a none" in {
       val routes: HttpRoutes[IO] = HttpRoutes.empty
       ChunkAggregator.httpRoutes(routes).run(Request()).value must returnValue(
-        Option.empty[Response[IO]])
+        Option.empty[Response])
     }
 
     "handle chunks" in {
@@ -68,7 +68,7 @@ class ChunkAggregatorSpec extends Http4sSpec with Http4sLegacyMatchersIO {
         val totalChunksSize = chunks.foldMap(_.size)
         val body = chunks.map(Stream.chunk).reduceLeft(_ ++ _)
 
-        def check(response: Response[IO]) = {
+        def check(response: Response) = {
           if (totalChunksSize > 0) {
             response.contentLength must beSome(totalChunksSize.toLong)
             response.headers.get(`Transfer-Encoding`).map(_.values) must_=== NonEmptyList

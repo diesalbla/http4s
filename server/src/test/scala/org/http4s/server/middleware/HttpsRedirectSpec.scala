@@ -16,7 +16,7 @@ class HttpsRedirectSpec extends Http4sSpec with Http4sLegacyMatchersIO {
   }
 
   val reqHeaders = Headers.of(Header("X-Forwarded-Proto", "http"), Header("Host", "example.com"))
-  val req = Request[IO](method = GET, uri = Uri(path = "/"), headers = reqHeaders)
+  val req = Request(method = GET, uri = Uri(path = "/"), headers = reqHeaders)
 
   "HttpsRedirect" should {
     "redirect to https when 'X-Forwarded-Proto' is http" in {
@@ -32,7 +32,7 @@ class HttpsRedirectSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
     "not redirect otherwise" in {
       val app = HttpsRedirect(innerRoutes).orNotFound
-      val noHeadersReq = Request[IO](method = GET, uri = Uri(path = "/"))
+      val noHeadersReq = Request(method = GET, uri = Uri(path = "/"))
       val resp = app(noHeadersReq).unsafeRunSync
       resp.status must_== Status.Ok
       resp.as[String] must returnValue("pong")

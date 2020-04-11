@@ -12,16 +12,16 @@ import org.http4s.{Request, Response}
 object MaxActiveRequests {
   def httpApp[F[_]: Concurrent](
       maxActive: Long,
-      defaultResp: Response[F] = Response[F](status = Status.ServiceUnavailable)
-  ): F[Kleisli[F, Request[F], Response[F]] => Kleisli[F, Request[F], Response[F]]] =
+      defaultResp: Response = Response(status = Status.ServiceUnavailable)
+  ): F[Kleisli[F, Request, Response] => Kleisli[F, Request, Response]] =
     inHttpApp[F, F](maxActive, defaultResp)
 
   def inHttpApp[G[_]: Sync, F[_]: Concurrent](
       maxActive: Long,
-      defaultResp: Response[F] = Response[F](status = Status.ServiceUnavailable)
-  ): G[Kleisli[F, Request[F], Response[F]] => Kleisli[F, Request[F], Response[F]]] =
-    Semaphore.in[G, F](maxActive).map { sem => http: Kleisli[F, Request[F], Response[F]] =>
-      Kleisli { (a: Request[F]) =>
+      defaultResp: Response = Response(status = Status.ServiceUnavailable)
+  ): G[Kleisli[F, Request, Response] => Kleisli[F, Request, Response]] =
+    Semaphore.in[G, F](maxActive).map { sem => http: Kleisli[F, Request, Response] =>
+      Kleisli { (a: Request) =>
         sem.tryAcquire.bracketCase { bool =>
           if (bool)
             http.run(a).map(resp => resp.copy(body = resp.body.onFinalizeWeak(sem.release)))
@@ -37,23 +37,23 @@ object MaxActiveRequests {
 
   def httpRoutes[F[_]: Concurrent](
       maxActive: Long,
-      defaultResp: Response[F] = Response[F](status = Status.ServiceUnavailable)
-  ): F[Kleisli[OptionT[F, *], Request[F], Response[F]] => Kleisli[
+      defaultResp: Response = Response(status = Status.ServiceUnavailable)
+  ): F[Kleisli[OptionT[F, *], Request, Response] => Kleisli[
     OptionT[F, *],
-    Request[F],
-    Response[F]]] =
+    Request,
+    Response]] =
     inHttpRoutes[F, F](maxActive, defaultResp)
 
   def inHttpRoutes[G[_]: Sync, F[_]: Concurrent](
       maxActive: Long,
-      defaultResp: Response[F] = Response[F](status = Status.ServiceUnavailable)
-  ): G[Kleisli[OptionT[F, *], Request[F], Response[F]] => Kleisli[
+      defaultResp: Response = Response(status = Status.ServiceUnavailable)
+  ): G[Kleisli[OptionT[F, *], Request, Response] => Kleisli[
     OptionT[F, *],
-    Request[F],
-    Response[F]]] =
+    Request,
+    Response]] =
     Semaphore.in[G, F](maxActive).map {
-      sem => http: Kleisli[OptionT[F, *], Request[F], Response[F]] =>
-        Kleisli { (a: Request[F]) =>
+      sem => http: Kleisli[OptionT[F, *], Request, Response] =>
+        Kleisli { (a: Request) =>
           Concurrent[OptionT[F, *]].bracketCase(OptionT.liftF(sem.tryAcquire)) { bool =>
             if (bool)
               http

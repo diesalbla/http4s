@@ -24,7 +24,7 @@ object HttpServer {
       "/" -> ctx.httpServices
     ).orNotFound
 
-  def stream[F[_]: ConcurrentEffect: ContextShift: Timer]: Stream[F, ExitCode] =
+  def stream[F[_]: ConcurrentEffect: ContextShift: Timer]: Stream[IO, ExitCode] =
     for {
       blocker <- Stream.resource(Blocker[F])
       client <- BlazeClientBuilder[F](global).stream

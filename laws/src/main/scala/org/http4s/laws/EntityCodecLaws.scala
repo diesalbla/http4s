@@ -8,8 +8,8 @@ import cats.laws._
 
 trait EntityCodecLaws[F[_], A] extends EntityEncoderLaws[F, A] {
   implicit def F: Effect[F]
-  implicit def encoder: EntityEncoder[F, A]
-  implicit def decoder: EntityDecoder[F, A]
+  implicit def encoder: EntityEncoder[A]
+  implicit def decoder: EntityDecoder[A]
 
   def entityCodecRoundTrip(a: A): IsEq[IO[Either[DecodeFailure, A]]] =
     (for {
@@ -22,8 +22,8 @@ trait EntityCodecLaws[F[_], A] extends EntityEncoderLaws[F, A] {
 object EntityCodecLaws {
   def apply[F[_], A](
       implicit F0: Effect[F],
-      entityEncoderFA: EntityEncoder[F, A],
-      entityDecoderFA: EntityDecoder[F, A]): EntityCodecLaws[F, A] = new EntityCodecLaws[F, A] {
+      entityEncoderFA: EntityEncoder[A],
+      entityDecoderFA: EntityDecoder[A]): EntityCodecLaws[F, A] = new EntityCodecLaws[F, A] {
     val F = F0
     val encoder = entityEncoderFA
     val decoder = entityDecoderFA

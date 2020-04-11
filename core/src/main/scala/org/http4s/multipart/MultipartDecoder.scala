@@ -1,26 +1,24 @@
 package org.http4s
 package multipart
 
-import cats.effect.{Blocker, ContextShift, Sync}
+import cats.effect.{Blocker, ContextShift, IO}
 import cats.implicits._
 
 private[http4s] object MultipartDecoder {
-  def decoder[F[_]: Sync]: EntityDecoder[F, Multipart[F]] =
+  def decoder: EntityDecoder[Multipart] =
     EntityDecoder.decodeBy(MediaRange.`multipart/*`) { msg =>
       msg.contentType.flatMap(_.mediaType.extensions.get("boundary")) match {
         case Some(boundary) =>
-          DecodeResult {
             msg.body
-              .through(MultipartParser.parseToPartsStream[F](Boundary(boundary)))
+              .through(MultipartParser.parseToPartsStream(Boundary(boundary)))
               .compile
               .toVector
-              .map[Either[DecodeFailure, Multipart[F]]](parts =>
+              .map[Either[DecodeFailure, Multipart]](parts =>
                 Right(Multipart(parts, Boundary(boundary))))
               .handleError {
                 case e: InvalidMessageBodyFailure => Left(e)
                 case e => Left(InvalidMessageBodyFailure("Invalid multipart body", Some(e)))
               }
-          }
         case None =>
           DecodeResult.failure(
             InvalidMessageBodyFailure("Missing boundary extension to Content-Type"))
@@ -35,9 +33,9 @@ private[http4s] object MultipartDecoder {
     * `maxSizeBeforeWrite` in memory before writing to a temporary file. On top of this,
     * you can gate the # of parts to further stop the quantity of parts you can have.
     * That said, because after a threshold it writes into a temporary file, given
-    * bincompat reasons on 0.18.x, there is no way to make a distinction about which `Part[F]`
+    * bincompat reasons on 0.18.x, there is no way to make a distinction about which `Part`
     * is a stream reference to a file or not. Thus, consumers using this decoder
-    * should drain all `Part[F]` bodies if they were decoded correctly. That said,
+    * should drain all `Part` bodies if they were decoded correctly. That said,
     * this decoder gives you more control about how many part bodies it parses in the first place, thus you can have
     * more fine-grained control about how many parts you accept.
     *
@@ -53,19 +51,18 @@ private[http4s] object MultipartDecoder {
     * @return A multipart/form-data encoded vector of parts with some part bodies held in
     *         temporary files.
     */
-  def mixedMultipart[F[_]: Sync: ContextShift](
+  def mixedMultipart(
       blocker: Blocker,
       headerLimit: Int = 1024,
       maxSizeBeforeWrite: Int = 52428800,
       maxParts: Int = 50,
-      failOnLimit: Boolean = false): EntityDecoder[F, Multipart[F]] =
+    failOnLimit: Boolean = false)(implicit cs: ContextShift[IO]): EntityDecoder[Multipart] =
     EntityDecoder.decodeBy(MediaRange.`multipart/*`) { msg =>
       msg.contentType.flatMap(_.mediaType.extensions.get("boundary")) match {
         case Some(boundary) =>
-          DecodeResult {
             msg.body
               .through(
-                MultipartParser.parseToPartsStreamedFile[F](
+                MultipartParser.parseToPartsStreamedFile(
                   Boundary(boundary),
                   blocker,
                   headerLimit,
@@ -74,13 +71,12 @@ private[http4s] object MultipartDecoder {
                   failOnLimit))
               .compile
               .toVector
-              .map[Either[DecodeFailure, Multipart[F]]](parts =>
+              .map[Either[DecodeFailure, Multipart]](parts =>
                 Right(Multipart(parts, Boundary(boundary))))
               .handleError {
                 case e: InvalidMessageBodyFailure => Left(e)
                 case e => Left(InvalidMessageBodyFailure("Invalid multipart body", Some(e)))
               }
-          }
         case None =>
           DecodeResult.failure(
             InvalidMessageBodyFailure("Missing boundary extension to Content-Type"))

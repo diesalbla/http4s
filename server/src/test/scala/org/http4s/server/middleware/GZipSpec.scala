@@ -20,7 +20,7 @@ class GZipSpec extends Http4sSpec with Http4sLegacyMatchersIO {
         case GET -> Root => Ok("pong")
       }
       val req =
-        Request[IO](Method.GET, Uri.uri("/")).putHeaders(`Accept-Encoding`(ContentCoding.gzip))
+        Request(Method.GET, Uri.uri("/")).putHeaders(`Accept-Encoding`(ContentCoding.gzip))
       val resp = routes.orNotFound(req).unsafeRunSync()
       resp.status must_== (Status.Ok)
       resp.headers.get(`Content-Encoding`) must beNone
@@ -35,7 +35,7 @@ class GZipSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
       val gzipRoutes: HttpRoutes[IO] = GZip(routes, isZippable = (_) => true)
 
-      val req: Request[IO] = Request[IO](Method.GET, Uri.uri("/"))
+      val req: Request = Request(Method.GET, Uri.uri("/"))
         .putHeaders(`Accept-Encoding`(ContentCoding.gzip))
       val actual: IO[Array[Byte]] =
         gzipRoutes.orNotFound(req).flatMap(_.as[Chunk[Byte]]).map(_.toArray)
@@ -57,7 +57,7 @@ class GZipSpec extends Http4sSpec with Http4sLegacyMatchersIO {
               case GET -> Root => Ok(Stream.emits(vector).covary[IO])
             }
             val gzipRoutes: HttpRoutes[IO] = GZip(routes)
-            val req: Request[IO] = Request[IO](Method.GET, Uri.uri("/"))
+            val req: Request = Request(Method.GET, Uri.uri("/"))
               .putHeaders(`Accept-Encoding`(ContentCoding.gzip))
             val actual: IO[Array[Byte]] =
               gzipRoutes.orNotFound(req).flatMap(_.as[Chunk[Byte]]).map(_.toArray)

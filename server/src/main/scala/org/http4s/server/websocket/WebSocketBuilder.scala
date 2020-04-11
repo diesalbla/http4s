@@ -35,24 +35,24 @@ import org.http4s.{Headers, Response, Status}
   *                           default: BadRequest
   */
 final case class WebSocketBuilder[F[_]](
-    send: Stream[F, WebSocketFrame],
+    send: Stream[IO, WebSocketFrame],
     receive: Pipe[F, WebSocketFrame, Unit],
     headers: Headers,
-    onNonWebSocketRequest: F[Response[F]],
-    onHandshakeFailure: F[Response[F]])
+    onNonWebSocketRequest: F[Response],
+    onHandshakeFailure: F[Response])
 object WebSocketBuilder {
   class Builder[F[_]: Applicative] {
     def build(
-        send: Stream[F, WebSocketFrame],
+        send: Stream[IO, WebSocketFrame],
         receive: Pipe[F, WebSocketFrame, Unit],
         headers: Headers = Headers.empty,
-        onNonWebSocketRequest: F[Response[F]] =
-          Response[F](Status.NotImplemented).withEntity("This is a WebSocket route.").pure[F],
-        onHandshakeFailure: F[Response[F]] = Response[F](Status.BadRequest)
+        onNonWebSocketRequest: F[Response] =
+          Response(Status.NotImplemented).withEntity("This is a WebSocket route.").pure[F],
+        onHandshakeFailure: F[Response] = Response(Status.BadRequest)
           .withEntity("WebSocket handshake failed.")
           .pure[F],
         onClose: F[Unit] = Applicative[F].unit,
-        filterPingPongs: Boolean = true): F[Response[F]] = {
+        filterPingPongs: Boolean = true): F[Response] = {
 
       val finalReceive: Pipe[F, WebSocketFrame, Unit] = if (filterPingPongs) {
         _.filterNot(isPingPong).through(receive)

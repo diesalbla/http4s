@@ -12,11 +12,11 @@ import io.chrisdavenport.vault._
 object PushSupport {
   private[this] val logger = getLogger
 
-  implicit def http4sPushOps[F[_]: Functor](response: Response[F]): PushOps[F] =
+  implicit def http4sPushOps[F[_]: Functor](response: Response): PushOps[F] =
     new PushOps[F](response)
 
-  final class PushOps[F[_]: Functor](response: Response[F]) extends AnyRef {
-    def push(url: String, cascade: Boolean = true)(implicit req: Request[F]): Response[F] = {
+  final class PushOps[F[_]: Functor](response: Response) extends AnyRef {
+    def push(url: String, cascade: Boolean = true)(implicit req: Request): Response = {
       val newUrl = {
         val script = req.scriptName
         if (script.length > 0) {
@@ -42,12 +42,12 @@ object PushSupport {
 
   private def collectResponse[F[_]](
       r: Vector[PushLocation],
-      req: Request[F],
+      req: Request,
       verify: String => Boolean,
-      routes: HttpRoutes[F])(implicit F: Monad[F]): F[Vector[PushResponse[F]]] = {
-    val emptyCollect: F[Vector[PushResponse[F]]] = F.pure(Vector.empty[PushResponse[F]])
+      routes: HttpRoutes[F])(implicit F: Monad[F]): F[Vector[PushResponse]] = {
+    val emptyCollect: F[Vector[PushResponse]] = F.pure(Vector.empty[PushResponse])
 
-    def fetchAndAdd(facc: F[Vector[PushResponse[F]]], v: PushLocation): F[Vector[PushResponse[F]]] =
+    def fetchAndAdd(facc: F[Vector[PushResponse]], v: PushLocation): F[Vector[PushResponse]] =
       routes(req.withPathInfo(v.location)).value.flatMap {
         case None => emptyCollect
         case Some(response) if !v.cascade =>
@@ -74,7 +74,7 @@ object PushSupport {
   def apply[F[_]: Monad](
       routes: HttpRoutes[F],
       verify: String => Boolean = _ => true): HttpRoutes[F] = {
-    def gather(req: Request[F])(resp: Response[F]): Response[F] =
+    def gather(req: Request)(resp: Response): Response =
       resp.attributes
         .lookup(pushLocationKey)
         .map { fresource =>
@@ -90,11 +90,11 @@ object PushSupport {
   }
 
   private[PushSupport] final case class PushLocation(location: String, cascade: Boolean)
-  private[http4s] final case class PushResponse[F[_]](location: String, resp: Response[F])
+  private[http4s] final case class PushResponse[F[_]](location: String, resp: Response)
 
   private[PushSupport] val pushLocationKey = Key.newKey[IO, Vector[PushLocation]].unsafeRunSync
-  private[http4s] def pushResponsesKey[F[_]]: Key[F[Vector[PushResponse[F]]]] =
-    Keys.PushResponses.asInstanceOf[Key[F[Vector[PushResponse[F]]]]]
+  private[http4s] def pushResponsesKey[F[_]]: Key[F[Vector[PushResponse]]] =
+    Keys.PushResponses.asInstanceOf[Key[F[Vector[PushResponse]]]]
 
   private[this] object Keys {
     val PushResponses: Key[Any] = Key.newKey[IO, Any].unsafeRunSync

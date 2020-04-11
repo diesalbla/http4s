@@ -20,8 +20,8 @@ private[blaze] trait WebSocketSupport[F[_]] extends Http1ServerStage[F] {
   protected implicit def F: ConcurrentEffect[F]
 
   override protected def renderResponse(
-      req: Request[F],
-      resp: Response[F],
+      req: Request,
+      resp: Response,
       cleanup: () => Future[ByteBuffer]): Unit = {
     val ws = resp.attributes.lookup(org.http4s.server.websocket.websocketKey[F])
     logger.debug(s"Websocket key: $ws\nRequest headers: " + req.headers)

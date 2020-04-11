@@ -30,7 +30,7 @@ trait EntityEncoderTests[F[_], A] extends Laws {
 object EntityEncoderTests {
   def apply[F[_], A](
       implicit effectF: Effect[F],
-      entityEncoderFA: EntityEncoder[F, A]
+      entityEncoderFA: EntityEncoder[A]
   ): EntityEncoderTests[F, A] = new EntityEncoderTests[F, A] {
     val laws: EntityEncoderLaws[F, A] = EntityEncoderLaws.apply[F, A]
   }

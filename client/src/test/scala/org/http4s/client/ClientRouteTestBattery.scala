@@ -48,7 +48,7 @@ abstract class ClientRouteTestBattery(name: String)
           s"Execute GET: $path" in {
             val name = address.getHostName
             val port = address.getPort
-            val req = Request[IO](uri = Uri.fromString(s"http://$name:$port$path").yolo)
+            val req = Request(uri = Uri.fromString(s"http://$name:$port$path").yolo)
             client
               .fetch(req)(resp => checkResponse(resp, expected))
               .unsafeRunTimed(timeout)
@@ -60,7 +60,7 @@ abstract class ClientRouteTestBattery(name: String)
         "Strip fragments from URI" in {
           skipped("Can only reproduce against external resource.  Help wanted.")
           val uri = Uri.uri("https://en.wikipedia.org/wiki/Buckethead_discography#Studio_albums")
-          val body = client.fetch(Request[IO](uri = uri))(e => IO.pure(e.status))
+          val body = client.fetch(Request(uri = uri))(e => IO.pure(e.status))
           body must returnValue(Ok)
         }
 
@@ -110,7 +110,7 @@ abstract class ClientRouteTestBattery(name: String)
     }
   }
 
-  private def checkResponse(rec: Response[IO], expected: Response[IO]): IO[Boolean] = {
+  private def checkResponse(rec: Response, expected: Response): IO[Boolean] = {
     val hs = rec.headers.toList
     for {
       _ <- IO(rec.status must be_==(expected.status))
@@ -124,7 +124,7 @@ abstract class ClientRouteTestBattery(name: String)
     } yield true
   }
 
-  private def renderResponse(srv: HttpServletResponse, resp: Response[IO]): Unit = {
+  private def renderResponse(srv: HttpServletResponse, resp: Response): Unit = {
     srv.setStatus(resp.status.code)
     resp.headers.foreach { h =>
       srv.addHeader(h.name.toString, h.value)

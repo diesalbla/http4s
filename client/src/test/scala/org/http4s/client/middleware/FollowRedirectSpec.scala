@@ -45,7 +45,7 @@ class FollowRedirectSpec
       case _ -> Root / "different-authority" =>
         TemporaryRedirect(Location(uri("http://www.example.com/ok")))
       case _ -> Root / status =>
-        Response[IO](status = Status.fromInt(status.toInt).yolo)
+        Response(status = Status.fromInt(status.toInt).yolo)
           .putHeaders(Location(uri("/ok")))
           .pure[IO]
     }
@@ -69,10 +69,10 @@ class FollowRedirectSpec
           response: Either[Throwable, RedirectResponse]
       ) = {
         val u = uri("http://localhost") / status.code.toString
-        val req: Request[IO] = method match {
+        val req: Request = method match {
           case _: Method.PermitsBody if body.nonEmpty =>
             val bodyBytes = body.getBytes.toList
-            Request[IO](
+            Request(
               method,
               u,
               body =
@@ -137,7 +137,7 @@ class FollowRedirectSpec
 
     "Strip payload headers when switching to GET" in {
       // We could test others, and other scenarios, but this was a pain.
-      val req = Request[IO](PUT, uri("http://localhost/303")).withEntity("foo")
+      val req = Request(PUT, uri("http://localhost/303")).withEntity("foo")
       client
         .fetch(req) {
           case Ok(resp) =>
@@ -156,7 +156,7 @@ class FollowRedirectSpec
         }
         .orNotFound
       val client = FollowRedirect(3)(Client.fromHttpApp(statefulApp))
-      client.fetch(Request[IO](uri = uri("http://localhost/loop"))) {
+      client.fetch(Request(uri = uri("http://localhost/loop"))) {
         case MovedPermanently(resp) => resp.as[String].map(_.toInt)
         case _ => IO.pure(-1)
       } must returnValue(4)
@@ -164,7 +164,7 @@ class FollowRedirectSpec
 
     "Dispose of original response when redirecting" in {
       var disposed = 0
-      def disposingService(req: Request[IO]) =
+      def disposingService(req: Request) =
         Resource.make(app.run(req))(_ => IO { disposed = disposed + 1 }.void)
       val client = FollowRedirect(3)(Client(disposingService))
       client.expect[String](uri("http://localhost/301")).unsafeRunSync()
@@ -173,13 +173,13 @@ class FollowRedirectSpec
 
     "Not hang when redirecting" in {
       Semaphore[IO](2).flatMap { semaphore =>
-        def f(req: Request[IO]) =
+        def f(req: Request) =
           Resource.make(semaphore.tryAcquire.flatMap {
             case true => app.run(req)
             case false => IO.raiseError(new IllegalStateException("Exhausted all connections"))
           })(_ => semaphore.release)
         val client = FollowRedirect(3)(Client(f))
-        client.status(Request[IO](uri = uri("http://localhost/loop/3")))
+        client.status(Request(uri = uri("http://localhost/loop/3")))
       } must returnValue(Status.Ok)
     }
 
@@ -206,7 +206,7 @@ class FollowRedirectSpec
     }
 
     "Record the intermediate URIs" in {
-      client.fetch(Request[IO](uri = uri("http://localhost/loop/0"))) {
+      client.fetch(Request(uri = uri("http://localhost/loop/0"))) {
         case Ok(resp) => IO.pure(FollowRedirect.getRedirectUris(resp))
       } must returnValue(
         List(
@@ -217,7 +217,7 @@ class FollowRedirectSpec
     }
 
     "Not add any URIs when there are no redirects" in {
-      client.fetch(Request[IO](uri = uri("http://localhost/loop/100"))) {
+      client.fetch(Request(uri = uri("http://localhost/loop/100"))) {
         case Ok(resp) => IO.pure(FollowRedirect.getRedirectUris(resp))
       } must returnValue(List.empty[Uri])
     }

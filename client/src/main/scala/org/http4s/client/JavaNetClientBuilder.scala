@@ -96,8 +96,8 @@ sealed abstract class JavaNetClientBuilder[F[_]] private (
     * The shutdown of this client is a no-op. $WHYNOSHUTDOWN
     */
   def create: Client[F] =
-    Client { (req: Request[F]) =>
-      def respond(conn: HttpURLConnection): F[Response[F]] =
+    Client { (req: Request) =>
+      def respond(conn: HttpURLConnection): F[Response] =
         for {
           _ <- configureSsl(conn)
           _ <- F.delay(conn.setConnectTimeout(timeoutMillis(connectTimeout)))
@@ -125,7 +125,7 @@ sealed abstract class JavaNetClientBuilder[F[_]] private (
   def resource: Resource[F, Client[F]] =
     Resource.make(F.delay(create))(_ => F.unit)
 
-  private def fetchResponse(req: Request[F], conn: HttpURLConnection) =
+  private def fetchResponse(req: Request, conn: HttpURLConnection) =
     for {
       _ <- writeBody(req, conn)
       code <- F.delay(conn.getResponseCode)
@@ -151,7 +151,7 @@ sealed abstract class JavaNetClientBuilder[F[_]] private (
       F.delay(url.openConnection().asInstanceOf[HttpURLConnection])
   }
 
-  private def writeBody(req: Request[F], conn: HttpURLConnection): F[Unit] =
+  private def writeBody(req: Request, conn: HttpURLConnection): F[Unit] =
     if (req.isChunked) {
       F.delay(conn.setDoOutput(true)) *>
         F.delay(conn.setChunkedStreamingMode(4096)) *>
@@ -172,7 +172,7 @@ sealed abstract class JavaNetClientBuilder[F[_]] private (
           F.delay(conn.setDoOutput(false))
       }
 
-  private def readBody(conn: HttpURLConnection): Stream[F, Byte] = {
+  private def readBody(conn: HttpURLConnection): Stream[IO, Byte] = {
     def inputStream =
       F.delay(Option(conn.getInputStream)).recoverWith {
         case _: IOException if conn.getResponseCode > 0 =>

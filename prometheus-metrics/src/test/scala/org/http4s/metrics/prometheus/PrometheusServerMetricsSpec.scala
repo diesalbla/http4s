@@ -17,7 +17,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
   "A http routes with a prometheus metrics middleware" should {
     "register a 2xx response" in withMeteredRoutes {
       case (registry, routes) =>
-        val req = Request[IO](uri = uri"/ok")
+        val req = Request(uri = uri"/ok")
 
         for {
           resp <- routes.run(req)
@@ -34,7 +34,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
 
     "register a 4xx response" in withMeteredRoutes {
       case (registry, routes) =>
-        val req = Request[IO](uri = uri"/bad-request")
+        val req = Request(uri = uri"/bad-request")
 
         for {
           resp <- routes.run(req)
@@ -51,7 +51,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
 
     "register a 5xx response" in withMeteredRoutes {
       case (registry, routes) =>
-        val req = Request[IO](uri = uri"/internal-server-error")
+        val req = Request(uri = uri"/internal-server-error")
 
         for {
           resp <- routes.run(req)
@@ -68,7 +68,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
 
     "register a GET request" in withMeteredRoutes {
       case (registry, routes) =>
-        val req = Request[IO](method = GET, uri = uri"/ok")
+        val req = Request(method = GET, uri = uri"/ok")
 
         for {
           resp <- routes.run(req)
@@ -85,7 +85,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
 
     "register a POST request" in withMeteredRoutes {
       case (registry, routes) =>
-        val req = Request[IO](method = POST, uri = uri"/ok")
+        val req = Request(method = POST, uri = uri"/ok")
 
         for {
           resp <- routes.run(req)
@@ -102,7 +102,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
 
     "register a PUT request" in withMeteredRoutes {
       case (registry, routes) =>
-        val req = Request[IO](method = PUT, uri = uri"/ok")
+        val req = Request(method = PUT, uri = uri"/ok")
 
         for {
           resp <- routes.run(req)
@@ -119,7 +119,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
 
     "register a DELETE request" in withMeteredRoutes {
       case (registry, routes) =>
-        val req = Request[IO](method = DELETE, uri = uri"/ok")
+        val req = Request(method = DELETE, uri = uri"/ok")
 
         for {
           resp <- routes.run(req)
@@ -136,7 +136,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
 
     "register an error" in withMeteredRoutes {
       case (registry, routes) =>
-        val req = Request[IO](method = GET, uri = uri"/error")
+        val req = Request(method = GET, uri = uri"/error")
 
         for {
           resp <- routes.run(req).attempt
@@ -152,7 +152,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
 
     "register an abnormal termination" in withMeteredRoutes {
       case (registry, routes) =>
-        val req = Request[IO](method = GET, uri = uri"/abnormal-termination")
+        val req = Request(method = GET, uri = uri"/abnormal-termination")
 
         for {
           resp <- routes.run(req)
@@ -168,9 +168,9 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
     }
 
     "use the provided request classifier" in {
-      val classifierFunc = (_: Request[IO]) => Some("classifier")
+      val classifierFunc = (_: Request) => Some("classifier")
 
-      val req = Request[IO](uri = uri"/ok")
+      val req = Request(uri = uri"/ok")
 
       meteredRoutes(classifierFunc)
         .use {
@@ -193,7 +193,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
     }
 
     "unregister collectors" in {
-      val req = Request[IO](uri = uri"/ok")
+      val req = Request(uri = uri"/ok")
 
       val registry = meteredRoutes()
         .use { case (cr, routes) => routes.run(req).as(cr) }
@@ -210,7 +210,7 @@ class PrometheusServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
     meteredRoutes().use(in.tupled).unsafeRunSync()
 
   private def meteredRoutes(
-      classifier: Request[IO] => Option[String] = (_: Request[IO]) => None
+      classifier: Request => Option[String] = (_: Request) => None
   ): Resource[IO, (CollectorRegistry, HttpApp[IO])] = {
     implicit val clock: Clock[IO] = FakeClock[IO]
     for {

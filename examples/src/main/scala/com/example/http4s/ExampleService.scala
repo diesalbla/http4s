@@ -17,8 +17,8 @@ import org.http4s.twirl._
 import org.http4s._
 import scala.concurrent.duration._
 
-class ExampleService[F[_]](blocker: Blocker)(implicit F: Effect[F], cs: ContextShift[F])
-    extends Http4sDsl[F] {
+class ExampleService(blocker: Blocker)(implicit cs: ContextShift[IO])
+    extends Http4sDsl[IO] {
   // A Router can mount multiple services to prefixes.  The request is passed to the
   // service with the longest matching prefix.
   def routes(implicit timer: Timer[F]): HttpRoutes[F] =
@@ -155,15 +155,15 @@ class ExampleService[F[_]](blocker: Blocker)(implicit F: Effect[F], cs: ContextS
         Ok(html.form())
 
       case req @ POST -> Root / "multipart" =>
-        req.decode[Multipart[F]] { m =>
+        req.decode[Multipart] { m =>
           Ok(s"""Multipart Data\nParts:${m.parts.length}\n${m.parts.map(_.name).mkString("\n")}""")
         }
     }
 
-  def helloWorldService: F[Response[F]] = Ok("Hello World!")
+  def helloWorldService: F[Response] = Ok("Hello World!")
 
   // This is a mock data source, but could be a Process representing results from a database
-  def dataStream(n: Int)(implicit timer: Timer[F]): Stream[F, String] = {
+  def dataStream(n: Int)(implicit timer: Timer[F]): Stream[IO, String] = {
     val interval = 100.millis
     val stream = Stream
       .awakeEvery[F](interval)
@@ -181,7 +181,7 @@ class ExampleService[F[_]](blocker: Blocker)(implicit F: Effect[F], cs: ContextS
     if (creds.username == "username" && creds.password == "password") F.pure(Some(creds.username))
     else F.pure(None)
 
-  // An AuthedRoutes[A, F] is a Service[F, (A, Request[F]), Response[F]] for some
+  // An AuthedRoutes[A, F] is a Service[F, (A, Request), Response] for some
   // user type A.  `BasicAuth` is an auth middleware, which binds an
   // AuthedRoutes to an authentication store.
   val basicAuth: AuthMiddleware[F, String] = BasicAuth(realm, authStore)

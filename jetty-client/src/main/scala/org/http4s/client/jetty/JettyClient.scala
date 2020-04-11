@@ -20,7 +20,7 @@ object JettyClient {
       .flatTap(client => F.delay { client.start() })
       .map(client =>
         Client[F] { req =>
-          Resource.suspend(F.asyncF[Resource[F, Response[F]]] { cb =>
+          Resource.suspend(F.asyncF[Resource[F, Response]] { cb =>
             F.bracket(StreamRequestContentProvider()) { dcp =>
               val jReq = toJettyRequest(client, req, dcp)
               for {
@@ -44,7 +44,7 @@ object JettyClient {
     Resource(allocate[F](client))
 
   def stream[F[_]](client: HttpClient = new HttpClient())(
-      implicit F: ConcurrentEffect[F]): Stream[F, Client[F]] =
+      implicit F: ConcurrentEffect[F]): Stream[IO, Client[F]] =
     Stream.resource(resource(client))
 
   def defaultHttpClient(): HttpClient = {
@@ -56,7 +56,7 @@ object JettyClient {
 
   private def toJettyRequest[F[_]](
       client: HttpClient,
-      request: Request[F],
+      request: Request,
       dcp: StreamRequestContentProvider[F]): JettyRequest = {
     val jReq = client
       .newRequest(request.uri.toString)

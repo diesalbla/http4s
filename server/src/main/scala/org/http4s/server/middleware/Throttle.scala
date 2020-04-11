@@ -95,9 +95,9 @@ object Throttle {
     createBucket.map(bucket => apply(bucket, defaultResponse[G] _)(http))
   }
 
-  def defaultResponse[F[_]](retryAfter: Option[FiniteDuration]): Response[F] = {
+  def defaultResponse[F[_]](retryAfter: Option[FiniteDuration]): Response = {
     val _ = retryAfter
-    Response[F](Status.TooManyRequests)
+    Response(Status.TooManyRequests)
   }
 
   /**

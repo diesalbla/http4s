@@ -44,13 +44,13 @@ trait Json4sSpec[J] extends JawnDecodeSupportSpec[JValue] with Http4sLegacyMatch
   "jsonOf" should {
     "decode JSON from an json4s reader" in {
       val result =
-        jsonOf[IO, Int].decode(Request[IO]().withEntity("42"), strict = false)
+        jsonOf[IO, Int].decode(Request().withEntity("42"), strict = false)
       result.value.unsafeRunSync must beRight(42)
     }
 
     "handle reader failures" in {
       val result =
-        jsonOf[IO, Int].decode(Request[IO]().withEntity(""""oops""""), strict = false)
+        jsonOf[IO, Int].decode(Request().withEntity(""""oops""""), strict = false)
       result.value.unsafeRunSync must beLeft.like {
         case InvalidMessageBodyFailure("Could not map JSON", _) => ok
       }
@@ -62,13 +62,13 @@ trait Json4sSpec[J] extends JawnDecodeSupportSpec[JValue] with Http4sLegacyMatch
 
     "extract JSON from formats" in {
       val result = jsonExtract[IO, Foo]
-        .decode(Request[IO]().withEntity(JObject("bar" -> JInt(42))), strict = false)
+        .decode(Request().withEntity(JObject("bar" -> JInt(42))), strict = false)
       result.value.unsafeRunSync must beRight(Foo(42))
     }
 
     "handle extract failures" in {
       val result = jsonExtract[IO, Foo]
-        .decode(Request[IO]().withEntity(""""oops""""), strict = false)
+        .decode(Request().withEntity(""""oops""""), strict = false)
       result.value.unsafeRunSync must beLeft.like {
         case InvalidMessageBodyFailure("Could not extract JSON", _) => ok
       }
@@ -84,16 +84,16 @@ trait Json4sSpec[J] extends JawnDecodeSupportSpec[JValue] with Http4sLegacyMatch
     }
   }
 
-  "Message[F].decodeJson[A]" should {
+  "Message.decodeJson[A]" should {
     "decode json from a message" in {
-      val req = Request[IO]()
+      val req = Request()
         .withEntity("42")
         .withContentType(`Content-Type`(MediaType.application.json))
       req.decodeJson[Option[Int]] must returnValue(Some(42))
     }
 
     "fail on invalid json" in {
-      val req = Request[IO]()
+      val req = Request()
         .withEntity("not a number")
         .withContentType(`Content-Type`(MediaType.application.json))
       req.decodeJson[Int].attempt.unsafeRunSync must beLeft

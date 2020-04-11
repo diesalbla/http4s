@@ -255,7 +255,7 @@ object WithBodyRules {
     t match {
       case r @ Type.Apply(_, Type.Apply(Type.Name("Request"), b :: Nil) :: Nil) =>
         // Note: we only change type def in request and not in response as normally the responses created with
-        // e.g. Ok() are still F[Response[F]]
+        // e.g. Ok() are still F[Response]
         Patch.replaceTree(r, s"Request[$b]")
       case _ =>
         Patch.empty

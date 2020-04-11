@@ -17,7 +17,7 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       def check(f: File, tpe: Option[MediaType]): MatchResult[Any] = {
         val r = StaticFile.fromFile[IO](f, testBlocker).value.unsafeRunSync
 
-        r must beSome[Response[IO]]
+        r must beSome[Response]
         r.flatMap(_.headers.get(`Content-Type`)) must_== tpe.map(t => `Content-Type`(t))
         // Other headers must be present
         r.flatMap(_.headers.get(`Last-Modified`)).isDefined must beTrue
@@ -94,19 +94,19 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     "handle an empty file" in {
       val emptyFile = File.createTempFile("empty", ".tmp")
 
-      StaticFile.fromFile[IO](emptyFile, testBlocker).value must returnValue(beSome[Response[IO]])
+      StaticFile.fromFile[IO](emptyFile, testBlocker).value must returnValue(beSome[Response])
     }
 
     "Don't send unmodified files" in {
       val emptyFile = File.createTempFile("empty", ".tmp")
 
       val request =
-        Request[IO]().putHeaders(`If-Modified-Since`(HttpDate.MaxValue))
+        Request().putHeaders(`If-Modified-Since`(HttpDate.MaxValue))
       val response = StaticFile
         .fromFile[IO](emptyFile, testBlocker, Some(request))
         .value
         .unsafeRunSync
-      response must beSome[Response[IO]]
+      response must beSome[Response]
       response.map(_.status) must beSome(NotModified)
     }
 
@@ -114,13 +114,13 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       val emptyFile = File.createTempFile("empty", ".tmp")
 
       val request =
-        Request[IO]().putHeaders(`If-None-Match`(
+        Request().putHeaders(`If-None-Match`(
           EntityTag(s"${emptyFile.lastModified().toHexString}-${emptyFile.length().toHexString}")))
       val response = StaticFile
         .fromFile[IO](emptyFile, testBlocker, Some(request))
         .value
         .unsafeRunSync
-      response must beSome[Response[IO]]
+      response must beSome[Response]
       response.map(_.status) must beSome(NotModified)
     }
 
@@ -128,7 +128,7 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       val emptyFile = File.createTempFile("empty", ".tmp")
 
       val request =
-        Request[IO]().putHeaders(
+        Request().putHeaders(
           `If-Modified-Since`(HttpDate.MaxValue),
           `If-None-Match`(
             EntityTag(
@@ -138,7 +138,7 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
         .fromFile[IO](emptyFile, testBlocker, Some(request))
         .value
         .unsafeRunSync
-      response must beSome[Response[IO]]
+      response must beSome[Response]
       response.map(_.status) must beSome(NotModified)
     }
 
@@ -146,14 +146,14 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       val emptyFile = File.createTempFile("empty", ".tmp")
 
       val request =
-        Request[IO]()
+        Request()
           .putHeaders(`If-Modified-Since`(HttpDate.MaxValue), `If-None-Match`(EntityTag(s"12345")))
 
       val response = StaticFile
         .fromFile[IO](emptyFile, testBlocker, Some(request))
         .value
         .unsafeRunSync
-      response must beSome[Response[IO]]
+      response must beSome[Response]
       response.map(_.status) must beSome(Ok)
     }
 
@@ -161,7 +161,7 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       val emptyFile = File.createTempFile("empty", ".tmp")
 
       val request =
-        Request[IO]()
+        Request()
           .putHeaders(
             `If-Modified-Since`(HttpDate.MinValue),
             `If-None-Match`(
@@ -172,7 +172,7 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
         .fromFile[IO](emptyFile, testBlocker, Some(request))
         .value
         .unsafeRunSync
-      response must beSome[Response[IO]]
+      response must beSome[Response]
       response.map(_.status) must beSome(Ok)
     }
 
@@ -192,7 +192,7 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
             .value
             .unsafeRunSync
 
-        r must beSome[Response[IO]]
+        r must beSome[Response]
         // Length is only 1 byte
         r.flatMap(_.headers.get(`Content-Length`).map(_.length)) must beSome(1)
         // get the Body to check the actual size
@@ -230,7 +230,7 @@ class StaticFileSpec extends Http4sSpec with Http4sLegacyMatchersIO {
           .value
           .unsafeRunSync
 
-        r must beSome[Response[IO]]
+        r must beSome[Response]
         // Length of the body must match
         r.flatMap(_.headers.get(`Content-Length`).map(_.length)) must beSome(fileSize - 1)
         // get the Body to check the actual size

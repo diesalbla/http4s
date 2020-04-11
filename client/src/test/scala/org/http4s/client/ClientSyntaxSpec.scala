@@ -22,21 +22,21 @@ class ClientSyntaxSpec
   val app = HttpRoutes
     .of[IO] {
       case r if r.method == GET && r.pathInfo == "/" =>
-        Response[IO](Ok).withEntity("hello").pure[IO]
+        Response(Ok).withEntity("hello").pure[IO]
       case r if r.method == PUT && r.pathInfo == "/put" =>
-        Response[IO](Created).withEntity(r.body).pure[IO]
+        Response(Created).withEntity(r.body).pure[IO]
       case r if r.method == GET && r.pathInfo == "/echoheaders" =>
-        r.headers.get(Accept).fold(IO.pure(Response[IO](BadRequest))) { m =>
-          Response[IO](Ok).withEntity(m.toString).pure[IO]
+        r.headers.get(Accept).fold(IO.pure(Response(BadRequest))) { m =>
+          Response(Ok).withEntity(m.toString).pure[IO]
         }
       case r if r.pathInfo == "/status/500" =>
-        Response[IO](InternalServerError).withEntity("Oops").pure[IO]
+        Response(InternalServerError).withEntity("Oops").pure[IO]
     }
     .orNotFound
 
   val client: Client[IO] = Client.fromHttpApp(app)
 
-  val req: Request[IO] = Request(GET, uri("http://www.foo.bar/"))
+  val req: Request = Request(GET, uri("http://www.foo.bar/"))
 
   object SadTrombone extends Exception("sad trombone")
 
@@ -46,7 +46,7 @@ class ClientSyntaxSpec
       disposed = true
       ()
     }
-    val disposingClient = Client { (req: Request[IO]) =>
+    val disposingClient = Client { (req: Request) =>
       Resource.make(app(req))(_ => dispose)
     }
     f(disposingClient).attempt.unsafeRunSync()
@@ -225,12 +225,12 @@ class ClientSyntaxSpec
     }
 
     "add Accept header on expect for requests" in {
-      client.expect[String](Request[IO](GET, uri("http://www.foo.com/echoheaders"))) must returnValue(
+      client.expect[String](Request(GET, uri("http://www.foo.com/echoheaders"))) must returnValue(
         "Accept: text/*")
     }
 
     "add Accept header on expect for requests" in {
-      client.expect[String](Request[IO](GET, uri("http://www.foo.com/echoheaders"))) must returnValue(
+      client.expect[String](Request(GET, uri("http://www.foo.com/echoheaders"))) must returnValue(
         "Accept: text/*")
     }
 
@@ -238,16 +238,16 @@ class ClientSyntaxSpec
       // This is more of an EntityDecoder spec
       val edec =
         EntityDecoder.decodeBy[IO, String](MediaType.image.jpeg)(_ => DecodeResult.success("foo!"))
-      client.expect(Request[IO](GET, uri("http://www.foo.com/echoheaders")))(
+      client.expect(Request(GET, uri("http://www.foo.com/echoheaders")))(
         EntityDecoder.text[IO].orElse(edec)) must returnValue("Accept: text/*, image/jpeg")
     }
 
     "return empty with expectOption and not found" in {
-      client.expectOption[String](Request[IO](GET, uri("http://www.foo.com/random-not-found"))) must returnValue(
+      client.expectOption[String](Request(GET, uri("http://www.foo.com/random-not-found"))) must returnValue(
         Option.empty[String])
     }
     "return expected value with expectOption and a response" in {
-      client.expectOption[String](Request[IO](GET, uri("http://www.foo.com/echoheaders"))) must returnValue(
+      client.expectOption[String](Request(GET, uri("http://www.foo.com/echoheaders"))) must returnValue(
         "Accept: text/*".some
       )
     }

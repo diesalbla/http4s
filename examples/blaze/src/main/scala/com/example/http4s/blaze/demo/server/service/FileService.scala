@@ -7,15 +7,15 @@ import com.example.http4s.blaze.demo.StreamUtils
 import fs2.Stream
 import org.http4s.multipart.Part
 
-class FileService[F[_]: ContextShift](blocker: Blocker)(implicit F: Effect[F], S: StreamUtils[F]) {
-  def homeDirectories(depth: Option[Int]): Stream[F, String] =
+class FileService(blocker: Blocker)(implicit S: StreamUtils[IO], cs: ContextShift[IO]) {
+  def homeDirectories(depth: Option[Int]): Stream[IO, String] =
     S.env("HOME").flatMap { maybePath =>
       val ifEmpty = S.error("HOME environment variable not found!")
       maybePath.fold(ifEmpty)(directories(_, depth.getOrElse(1)))
     }
 
-  def directories(path: String, depth: Int): Stream[F, String] = {
-    def dir(f: File, d: Int): Stream[F, File] = {
+  def directories(path: String, depth: Int): Stream[IO, String] = {
+    def dir(f: File, d: Int): Stream[IO, File] = {
       val dirs = Stream.emits(f.listFiles().toSeq).filter(_.isDirectory).covary[F]
 
       if (d <= 0) Stream.empty
@@ -31,7 +31,7 @@ class FileService[F[_]: ContextShift](blocker: Blocker)(implicit F: Effect[F], S
     }
   }
 
-  def store(part: Part[F]): Stream[F, Unit] =
+  def store(part: Part): Stream[IO, Unit] =
     for {
       home <- S.evalF(sys.env.getOrElse("HOME", "/tmp"))
       filename <- S.evalF(part.filename.getOrElse("sample"))

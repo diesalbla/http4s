@@ -34,7 +34,7 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
     chunk(Chunk.bytes(body.getBytes(StandardCharsets.UTF_8)))
 
   "EntityDecoder".can {
-    val req = Response[IO](Ok).withEntity("foo").pure[IO]
+    val req = Response(Ok).withEntity("foo").pure[IO]
     "flatMapR with success" in {
       DecodeResult.success(req).flatMap { r =>
         EntityDecoder
@@ -172,10 +172,10 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
 
       decoder
         .decode(
-          Request[IO](headers = Headers.of(`Content-Type`(MediaType.text.plain))),
+          Request(headers = Headers.of(`Content-Type`(MediaType.text.plain))),
           strict = true)
         .swap
-        .map(_.toHttpResponse[IO](HttpVersion.`HTTP/1.1`)) must returnRight(
+        .map(_.toHttpResponse(HttpVersion.`HTTP/1.1`)) must returnRight(
         haveStatus(Status.UnprocessableEntity))
     }
 
@@ -242,12 +242,12 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
 
     "decodeStrict" >> {
       "should produce a MediaTypeMissing if message has no content type" in {
-        val req = Request[IO]()
+        val req = Request()
         decoder1.decode(req, strict = true) must returnLeft(MediaTypeMissing(decoder1.consumes))
       }
       "should produce a MediaTypeMismatch if message has unsupported content type" in {
         val tpe = MediaType.text.css
-        val req = Request[IO](headers = Headers.of(`Content-Type`(tpe)))
+        val req = Request(headers = Headers.of(`Content-Type`(tpe)))
         decoder1.decode(req, strict = true) must returnLeft(
           MediaTypeMismatch(tpe, decoder1.consumes))
       }
@@ -257,13 +257,13 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
       "A message with a MediaType that is not supported by any of the decoders" +
         " will be attempted by the last decoder" in {
         val reqMediaType = MediaType.application.`atom+xml`
-        val req = Request[IO](headers = Headers.of(`Content-Type`(reqMediaType)))
+        val req = Request(headers = Headers.of(`Content-Type`(reqMediaType)))
         (decoder1 <+> decoder2).decode(req, strict = false) must returnRight(2)
       }
       "A catch all decoder will always attempt to decode a message" in {
         val reqSomeOtherMediaType =
-          Request[IO](headers = Headers.of(`Content-Type`(`text/x-h`)))
-        val reqNoMediaType = Request[IO]()
+          Request(headers = Headers.of(`Content-Type`(`text/x-h`)))
+        val reqNoMediaType = Request()
         val catchAllDecoder: EntityDecoder[IO, Int] = EntityDecoder.decodeBy(MediaRange.`*/*`) {
           _ =>
             DecodeResult.success(3)
@@ -278,7 +278,7 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
         "with ALL supported media types of the composite decoder" in {
         val reqMediaType = `text/x-h`
         val expectedMediaRanges = failDecoder.consumes ++ decoder1.consumes ++ decoder2.consumes
-        val reqSomeOtherMediaType = Request[IO](headers = Headers.of(`Content-Type`(reqMediaType)))
+        val reqSomeOtherMediaType = Request(headers = Headers.of(`Content-Type`(reqMediaType)))
         (decoder1 <+> decoder2 <+> failDecoder)
           .decode(reqSomeOtherMediaType, strict = true) must returnLeft(
           MediaTypeMismatch(reqMediaType, expectedMediaRanges))
@@ -290,7 +290,7 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
   }
 
   "apply" should {
-    val request = Request[IO]().withEntity("whatever")
+    val request = Request().withEntity("whatever")
 
     "invoke the function with  the right on a success" in {
       val happyDecoder: EntityDecoder[IO, String] =
@@ -316,9 +316,9 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
   }
 
   "application/x-www-form-urlencoded" should {
-    val server: Request[IO] => IO[Response[IO]] = { req =>
+    val server: Request => IO[Response] = { req =>
       req
-        .decode[UrlForm](form => Response[IO](Ok).withEntity(form).pure[IO])
+        .decode[UrlForm](form => Response(Ok).withEntity(form).pure[IO])
         .attempt
         .map {
           case Right(r) => r
@@ -333,7 +333,7 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
           "Age" -> Chain("23"),
           "Name" -> Chain("Jonathan Doe")
         ))
-      val resp: IO[Response[IO]] = Request[IO]()
+      val resp: IO[Response] = Request()
         .withEntity(urlForm)(UrlForm.entityEncoder(Charset.`UTF-8`))
         .pure[IO]
         .flatMap(server)
@@ -366,7 +366,7 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
       data.foldLeft("")(_ + _)
     }
 
-    def mockServe(req: Request[IO])(route: Request[IO] => IO[Response[IO]]) =
+    def mockServe(req: Request)(route: Request => IO[Response]) =
       route(req.withBodyStream(chunk(Chunk.bytes(binData))))
 
     "Write a text file from a byte string" in {
@@ -374,7 +374,7 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
       try {
         val response = mockServe(Request()) { req =>
           req.decodeWith(EntityDecoder.textFile(tmpFile, testBlocker), strict = false) { _ =>
-            Response[IO](Ok).withEntity("Hello").pure[IO]
+            Response(Ok).withEntity("Hello").pure[IO]
           }
         }.unsafeRunSync
 
@@ -393,7 +393,7 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
         val response = mockServe(Request()) {
           case req =>
             req.decodeWith(EntityDecoder.binFile(tmpFile, testBlocker), strict = false) { _ =>
-              Response[IO](Ok).withEntity("Hello").pure[IO]
+              Response(Ok).withEntity("Hello").pure[IO]
             }
         }.unsafeRunSync
 
@@ -409,14 +409,14 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
 
   "binary EntityDecoder" should {
     "yield an empty array on a bodyless message" in {
-      val msg = Request[IO]()
+      val msg = Request()
       EntityDecoder.binary[IO].decode(msg, strict = false) must returnRight(Chunk.empty[Byte])
     }
 
     "concat Chunks" in {
       val d1 = Array[Byte](1, 2, 3); val d2 = Array[Byte](4, 5, 6)
       val body = chunk(Chunk.bytes(d1)) ++ chunk(Chunk.bytes(d2))
-      val msg = Request[IO](body = body)
+      val msg = Request(body = body)
       val expected = Chunk.bytes(Array[Byte](1, 2, 3, 4, 5, 6))
       EntityDecoder.binary[IO].decode(msg, strict = false) must returnRight(expected)
     }
@@ -429,14 +429,14 @@ class EntityDecoderSpec extends Http4sSpec with Http4sLegacyMatchersIO with Pend
   "decodeString" should {
     val str = "Oekraïene"
     "Use an charset defined by the Content-Type header" in {
-      val resp = Response[IO](Ok)
+      val resp = Response(Ok)
         .withEntity(str.getBytes(Charset.`UTF-8`.nioCharset))
         .withContentType(`Content-Type`(MediaType.text.plain, Some(Charset.`UTF-8`)))
       EntityDecoder.decodeString(resp)(implicitly, Charset.`US-ASCII`) must returnValue(str)
     }
 
     "Use the default if the Content-Type header does not define one" in {
-      val resp = Response[IO](Ok)
+      val resp = Response(Ok)
         .withEntity(str.getBytes(Charset.`UTF-8`.nioCharset))
         .withContentType(`Content-Type`(MediaType.text.plain, None))
       EntityDecoder.decodeString(resp)(implicitly, Charset.`UTF-8`) must returnValue(str)

@@ -206,7 +206,7 @@ This release is binary incompatible with 0.21.0-RC2, but should be source compat
 
 ### Binary and source
 
-* [#3110](https://github.com/http4s/http4s/pull/3110): Change `MessageFailure#toHttpResponse` to return a `Response[F]` instead of an `F[Response[F]]`, and relax constraints accordingly. Drops the `inHttpResponse` method.
+* [#3110](https://github.com/http4s/http4s/pull/3110): Change `MessageFailure#toHttpResponse` to return a `Response` instead of an `F[Response]`, and relax constraints accordingly. Drops the `inHttpResponse` method.
 * [#3107](https://github.com/http4s/http4s/pull/3107): Add `covary[F[_]]` method to `Media` types.  Should not break your source unless you have your own `Media` subclass, which you shouldn't.
 
 ### Binary only
@@ -1198,8 +1198,8 @@ This release is identical to v0.19.0-M4.  We mistagged it.  Please proceed to th
   * Added a `ServerBuilder#stream` to construct a `Stream` from a `Resource`.
 * [#2118](https://github.com/http4s/http4s/pull/2118): Finalize various case classes.
 * [#2102](https://github.com/http4s/http4s/pull/2102): Refactoring of `Client` and some builders:
-  * `Client` is no longer a case class.  Construct a new `Client` backend or middleware with `Client.apply(run: Request[F] => Resource[F, Response[F]])` for any `F` with a `Bracket[Throwable, F]`.
-  * Removed `DisposableResponse[F]` in favor of `Resource[F, Response[F]]`.
+  * `Client` is no longer a case class.  Construct a new `Client` backend or middleware with `Client.apply(run: Request => Resource[F, Response])` for any `F` with a `Bracket[Throwable, F]`.
+  * Removed `DisposableResponse` in favor of `Resource[F, Response]`.
   * Removed `Client#open` in favor of `Client#run`.
   * Removed `Client#shutdown` in favor of `cats.effect.Resource` or `fs2.Stream`.
   * Removed `AsyncHttpClient.apply`. It was not referentially transparent, and no longer possible. Use `AsyncHttpClient.resource` instead.
@@ -1278,8 +1278,8 @@ This release is identical to v0.19.0-M4.  We mistagged it.  Please proceed to th
 * [#2026](https://github.com/http4s/http4s/pull/2026): `CSRF` enhancements
   * CSRF tokens represented with a newtype
   * CSRF token signatures are encoded hexadecimal strings, making them URI-safe.
-  * Added a `headerCheck: Request[F] => Boolean` parameter
-  * Added an `onFailure: Response[F]` parameter, which defaults to a `403`. This was formerly a hardcoded `401`.
+  * Added a `headerCheck: Request => Boolean` parameter
+  * Added an `onFailure: Response` parameter, which defaults to a `403`. This was formerly a hardcoded `401`.
 * [#1993](https://github.com/http4s/http4s/pull/2026): Massive changes from cats-effect and fs2 upgrades
   * `Timer` added to `AsyncHttpClient`
   * Dropwizard `Metrics` middleware now takes a `Clock` rather than a `Timer`
@@ -1414,7 +1414,7 @@ This release is identical to v0.19.0-M4.  We mistagged it.  Please proceed to th
 * Reintroduce the option for fallthrough for authenticated services [#1670]((https://github.com/http4s/http4s/pull/1670)
 * Separate `Cookie` into `RequestCookie` and `ResponseCookie` [#1676](https://github.com/http4s/http4s/pull/1676)
 * Add `Eq[Uri]` instance [#1688](https://github.com/http4s/http4s/pull/1688)
-* Deprecate `Message#withBody` in favor of `Message#withEntity`.  The latter returns a `Message[F]` rather than an `F[Message[F]]`. [#1694](https://github.com/http4s/http4s/pull/1694)
+* Deprecate `Message#withBody` in favor of `Message#withEntity`.  The latter returns a `Message` rather than an `F[Message]`. [#1694](https://github.com/http4s/http4s/pull/1694)
 * Myriad new `Arbitrary` and `Cogen` instances [#1677](https://github.com/http4s/http4s/pull/1677)
 * Add non-deprecated `LocationResponseGenerator` functions [#1715](https://github.com/http4s/http4s/pull/1715)
 * Relax constraint on `Router` from `Sync` to `Monad` [#1723](https://github.com/http4s/http4s/pull/1723)
@@ -1442,7 +1442,7 @@ This release is identical to v0.19.0-M4.  We mistagged it.  Please proceed to th
 * Generalize `VirtualHost` middleware to work on `Kleisli[F, Request[G], Response[G]]` given `Applicative[F]`.  [#1902](https://github.com/http4s/http4s/pull/1902)
 * Generalize `URITranslate` middleware to work on `Kleisli[F, Request[G], B]` given `Functor[G]`.  [#1895](https://github.com/http4s/http4s/pull/1895)
 * Generalize `CSRF` middleware to work on `Kleisli[F, Request[G], Response[G]]` given `Sync[F]` and `Applicative[G]`.  [#1909](https://github.com/http4s/http4s/pull/1909)
-* Generalize `ResponseLogger` middleware to work on `Kleisli[F, A, Response[F]]` given `Effect[F]`.  [#1916](https://github.com/http4s/http4s/pull/1916)
+* Generalize `ResponseLogger` middleware to work on `Kleisli[F, A, Response]` given `Effect[F]`.  [#1916](https://github.com/http4s/http4s/pull/1916)
 * Make `Logger`, `RequestLogger`, and `ResponseLogger` work on `HttpApp[F]` so a `Response` is guaranteed unless the service raises an error [#1916](https://github.com/http4s/http4s/pull/1916)
 * Rename `RequestLogger.apply0` and `ResponseLogger.apply0` to `RequestLogger.apply` and `ResponseLogger.apply`.  [#1837](https://github.com/http4s/http4s/pull/1837)
 * Move `org.http4s.server.ServerSoftware` to `org.http4s.ServerSoftware` [#1884](https://github.com/http4s/http4s/pull/1884)
@@ -1560,7 +1560,7 @@ This release is identical to v0.19.0-M4.  We mistagged it.  Please proceed to th
 
 # v0.18.5 (2018-03-28)
 * Add `&` extractor to http4s-dsl. [#1758](https://github.com/http4s/http4s/pull/1758)
-* Deprecate `EntityEncoder[F, Future[A]]`.  The `EntityEncoder` is strict in its argument, which causes any side effect of the `Future` to execute immediately.  Wrap your `future` in `IO.fromFuture(IO(future))` instead. [#1759](https://github.com/http4s/http4s/pull/1759)
+* Deprecate `EntityEncoder[Future[A]]`.  The `EntityEncoder` is strict in its argument, which causes any side effect of the `Future` to execute immediately.  Wrap your `future` in `IO.fromFuture(IO(future))` instead. [#1759](https://github.com/http4s/http4s/pull/1759)
 * Dependency upgrades:
   * circe-0.9.3
 
@@ -1656,7 +1656,7 @@ This release is identical to v0.19.0-M4.  We mistagged it.  Please proceed to th
 * Make `abnormal-terminations` and `service-errors` Metrics names plural. [#1611](https://github.com/http4s/http4s/pull/1611)
 * Refactor blaze client creation. [#1523](https://github.com/http4s/http4s/pull/1523)
    * `Http1Client.apply` returns `F[Client[F]]`
-   * `Http1Client.stream` returns `Stream[F, Client[F]]`, bracketed to shut down the client.
+   * `Http1Client.stream` returns `Stream[IO, Client[F]]`, bracketed to shut down the client.
    * `PooledHttp1Client` constructor is deprecated, replaced by the above.
    * `SimpleHttp1Client` is deprecated with no direct equivalent.  Use `Http1Client`.
 * Improve client timeout and wait queue handling
@@ -1756,24 +1756,24 @@ This release is identical to v0.19.0-M4.  We mistagged it.  Please proceed to th
   `org.http4s.client.dsl.Http4sClientDsl[F]`, with concrete type `IO`
   available as `org.http4s.client.dsl.io._`.  This is consistent with
   http4s-dsl for servers.
-* Change `StreamApp` to return a `Stream[F, ExitCode]`. The first exit code
+* Change `StreamApp` to return a `Stream[IO, ExitCode]`. The first exit code
   returned by the stream is the exit code of the JVM. This allows custom exit
   codes, and eases dead code warnings in certain constructions that involved
   mapping over `Nothing`.
-* `AuthMiddleware.apply` now takes an `Kleisli[OptionT[F, ?], Request[F], T]`
-  instead of a `Kleisli[F, Request[F], T]`.
+* `AuthMiddleware.apply` now takes an `Kleisli[OptionT[F, ?], Request, T]`
+  instead of a `Kleisli[F, Request, T]`.
 * Set `Content-Type` header on default `NotFound` response.
 * Merges from v0.16.5 and v0.17.5.
 * Remove mutable map that backs `Method` registry. All methods in the IANA
   registry are available through `Method.all`. Custom methods should be memoized
   by other means.
-* Adds an `EntityDecoder[F, Array[Byte]]` and `EntityDecoder[F, Array[Char]]`
+* Adds an `EntityDecoder[Array[Byte]]` and `EntityDecoder[Array[Char]]`
   for symmetry with provided `EntityEncoder` instances.
-* Adds `Arbitrary` instances for `Headers`, `EntityBody[F]` (currently just
-  single chunk), `Entity[F]`, and `EntityEncoder[F, A]`.
+* Adds `Arbitrary` instances for `Headers`, `EntityBody` (currently just
+  single chunk), `Entity[F]`, and `EntityEncoder[A]`.
 * Adds `EntityEncoderLaws` for `EntityEncoder`.
 * Adds `EntityCodecLaws`.  "EntityCodec" is not a type in http4s, but these
-  laws relate an `EntityEncoder[F, A]` to an `EntityDecoder[F, A]`.
+  laws relate an `EntityEncoder[A]` to an `EntityDecoder[A]`.
 * There is a classpath difference in log4s version between blaze and http4s in this
   milestone that will be remedied in M6. We believe these warnings are safe.
 
@@ -1810,7 +1810,7 @@ This release is identical to v0.19.0-M4.  We mistagged it.  Please proceed to th
     * create an object that extends `Http4sDsl[F]`, and extend that.
     * `import org.http4s.dsl.io._` is still available for those who
       wish to specialize on `cats.effect.IO`
-* Remove `Semigroup[F[MaybeResponse[F]]]` constraint from
+* Remove `Semigroup[F[MaybeResponse]]` constraint from
   `BlazeBuilder`.
 * Fix `AutoSlash` middleware when a service is mounted with a prefix.
 * Publish internal http4s-parboiled2 as a separate module.  This does
@@ -1850,8 +1850,8 @@ This release is identical to v0.19.0-M4.  We mistagged it.  Please proceed to th
     For example:
     * `POST(uri, urlForm, Header("Authorization", "Bearer s3cr3t"))`
     * ``Ok("This will have an html content type!", `Content-Type`(`text/html`))``
-* Restate `HttpService[F]` as a `Kleisli[OptionT[F, ?], Request[F], Response[F]]`.
-* Similarly, `AuthedService[F]` as a `Kleisli[OptionT[F, ?], AuthedRequest[F], Response[F]]`.
+* Restate `HttpService[F]` as a `Kleisli[OptionT[F, ?], Request, Response]`.
+* Similarly, `AuthedService[F]` as a `Kleisli[OptionT[F, ?], AuthedRequest, Response]`.
 * `MaybeResponse` is removed, because the optionality is now expressed through
   the `OptionT` in `HttpService`. Instead of composing `HttpService` via a
   `Semigroup`, compose via a `SemigroupK`. Import `org.http4s.implicits._` to
@@ -1999,15 +1999,15 @@ fine, too!
 The parameterization chanages many core signatures throughout http4s:
 - `Request` and `Response` become `Request[F[_]]` and
   `Response[F[_]]`.  The `F` is the effect type of the body (i.e.,
-  `Stream[F, Byte]`), or what the body `.run`s to.
+  `Stream[IO, Byte]`), or what the body `.run`s to.
 - `HttpService` becomes `HttpService[F[_]]`, so that the service
-  returns an `F[Response[F]]`.  Instead of constructing with
+  returns an `F[Response]`.  Instead of constructing with
   `HttpService { ... }`, we now declare the effect type of the
   service, like `HttpService[IO] { ... }`.  This determines the type
   of request and response handled by the service.
 - `EntityEncoder[A]` and `EntityDecoder[A]` are now
   `EntityEncoder[F[_], A]` and `EntityDecoder[F[_], A]`, respectively.
-  These act as a codec for `Request[F]` and `Response[F]`.  In practice,
+  These act as a codec for `Request` and `Response`.  In practice,
   this change tends to be transparent in the DSL.
 - The server builders now take an `F` parameter, which needs to match
   the services mounted to them.

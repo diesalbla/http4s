@@ -20,7 +20,7 @@ abstract class Http4sServlet[F[_]](service: HttpApp[F], servletIo: ServletIo[F])
   protected val logger = getLogger
 
   // micro-optimization: unwrap the service and call its .run directly
-  protected val serviceFn: Request[F] => F[Response[F]] = service.run
+  protected val serviceFn: Request => F[Response] = service.run
 
   protected var servletApiVersion: ServletApiVersion = _
   private[this] var serverSoftware: ServerSoftware = _
@@ -41,12 +41,12 @@ abstract class Http4sServlet[F[_]](service: HttpApp[F], servletIo: ServletIo[F])
       servletResponse: HttpServletResponse,
       bodyWriter: BodyWriter[F]
   ): F[Unit] = {
-    val response = Response[F](Status.BadRequest).withEntity(parseFailure.sanitized)
+    val response = Response(Status.BadRequest).withEntity(parseFailure.sanitized)
     renderResponse(response, servletResponse, bodyWriter)
   }
 
   protected def renderResponse(
-      response: Response[F],
+      response: Response,
       servletResponse: HttpServletResponse,
       bodyWriter: BodyWriter[F]
   ): F[Unit] =
@@ -66,7 +66,7 @@ abstract class Http4sServlet[F[_]](service: HttpApp[F], servletIo: ServletIo[F])
           } *> F.raiseError(t)
       }
 
-  protected def toRequest(req: HttpServletRequest): ParseResult[Request[F]] =
+  protected def toRequest(req: HttpServletRequest): ParseResult[Request] =
     for {
       method <- Method.fromString(req.getMethod)
       uri <- Uri.requestTarget(

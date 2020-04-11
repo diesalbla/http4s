@@ -246,7 +246,7 @@ class BlazeClientSpec extends Http4sSpec with Http4sLegacyMatchersIO {
           Ref[IO].of(0L).flatMap { _ =>
             mkClient(1, requestTimeout = 1.second).use { client =>
               val submit =
-                client.status(Request[IO](uri = Uri.fromString(s"http://$name:$port/simple").yolo))
+                client.status(Request(uri = Uri.fromString(s"http://$name:$port/simple").yolo))
               submit *> timer.sleep(2.seconds) *> submit
             }
           } must returnValue(Status.Ok)
@@ -286,7 +286,7 @@ class BlazeClientSpec extends Http4sSpec with Http4sLegacyMatchersIO {
             .flatMap { reqClosed =>
               mkClient(1, requestTimeout = 10.seconds).use { client =>
                 val body = Stream(0.toByte).repeat.onFinalizeWeak(reqClosed.complete(()))
-                val req = Request[IO](
+                val req = Request(
                   method = Method.POST,
                   uri = Uri.fromString(s"http://$name:$port/").yolo
                 ).withBodyStream(body)
@@ -304,7 +304,7 @@ class BlazeClientSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
           mkClient(1)
             .use { client =>
-              val req = Request[IO](uri = uri)
+              val req = Request(uri = uri)
               client
                 .fetch(req) { _ =>
                   IO.never
@@ -328,9 +328,9 @@ class BlazeClientSpec extends Http4sSpec with Http4sLegacyMatchersIO {
               }
               val s = Stream(
                 Stream.eval(
-                  client.expect[String](Request[IO](uri = uris(0)))
+                  client.expect[String](Request(uri = uris(0)))
                 )).repeat.take(10).parJoinUnbounded ++ Stream.eval(
-                client.expect[String](Request[IO](uri = uris(1))))
+                client.expect[String](Request(uri = uris(1))))
               s.compile.lastOrError
             }
             .unsafeRunTimed(5.seconds)
@@ -340,7 +340,7 @@ class BlazeClientSpec extends Http4sSpec with Http4sLegacyMatchersIO {
         "raise a ConnectionFailure when a host can't be resolved" in {
           mkClient(1)
             .use { client =>
-              client.status(Request[IO](uri = uri"http://example.invalid/"))
+              client.status(Request(uri = uri"http://example.invalid/"))
             }
             .attempt
             .unsafeRunSync() must beLike {

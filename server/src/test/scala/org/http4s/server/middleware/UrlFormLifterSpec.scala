@@ -23,13 +23,13 @@ class UrlFormLifterSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
   "UrlFormLifter" should {
     "Add application/x-www-form-urlencoded bodies to the query params" in {
-      val req = Request[IO](method = POST).withEntity(urlForm).pure[IO]
+      val req = Request(method = POST).withEntity(urlForm).pure[IO]
       req.flatMap(app.run) must returnStatus(Ok)
     }
 
     "Add application/x-www-form-urlencoded bodies after query params" in {
       val req =
-        Request[IO](method = Method.POST, uri = Uri.uri("/foo?foo=biz"))
+        Request(method = Method.POST, uri = Uri.uri("/foo?foo=biz"))
           .withEntity(urlForm)
           .pure[IO]
       req.flatMap(app.run) must returnStatus(Ok)
@@ -37,7 +37,7 @@ class UrlFormLifterSpec extends Http4sSpec with Http4sLegacyMatchersIO {
     }
 
     "Ignore Requests that don't have application/x-www-form-urlencoded bodies" in {
-      val req = Request[IO](method = Method.POST).withEntity("foo").pure[IO]
+      val req = Request(method = Method.POST).withEntity("foo").pure[IO]
       req.flatMap(app.run) must returnStatus(BadRequest)
     }
   }

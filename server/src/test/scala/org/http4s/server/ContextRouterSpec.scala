@@ -50,49 +50,49 @@ class ContextRouterSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
   "A router" should {
     "translate mount prefixes" in {
-      service.orNotFound(ContextRequest((), Request[IO](GET, uri"/numbers/1"))) must returnBody(
+      service.orNotFound(ContextRequest((), Request(GET, uri"/numbers/1"))) must returnBody(
         "one")
-      service.orNotFound(ContextRequest((), Request[IO](GET, uri"/numb/1"))) must returnBody("two")
-      service.orNotFound(ContextRequest((), Request[IO](GET, uri"/numbe?block"))) must returnStatus(
+      service.orNotFound(ContextRequest((), Request(GET, uri"/numb/1"))) must returnBody("two")
+      service.orNotFound(ContextRequest((), Request(GET, uri"/numbe?block"))) must returnStatus(
         NotFound)
     }
 
     "require the correct prefix" in {
       val resp =
-        service.orNotFound(ContextRequest((), Request[IO](GET, uri"/letters/1"))).unsafeRunSync()
+        service.orNotFound(ContextRequest((), Request(GET, uri"/letters/1"))).unsafeRunSync()
       resp must not(haveBody("bee"))
       resp must not(haveBody("one"))
       resp must haveStatus(NotFound)
     }
 
     "support root mappings" in {
-      service.orNotFound(ContextRequest((), Request[IO](GET, uri"/about"))) must returnBody("about")
+      service.orNotFound(ContextRequest((), Request(GET, uri"/about"))) must returnBody("about")
     }
 
     "match longer prefixes first" in {
-      service.orNotFound(ContextRequest((), Request[IO](GET, uri"/shadow/shadowed"))) must returnBody(
+      service.orNotFound(ContextRequest((), Request(GET, uri"/shadow/shadowed"))) must returnBody(
         "visible")
     }
 
     "404 on unknown prefixes" in {
-      service.orNotFound(ContextRequest((), Request[IO](GET, uri"/symbols/~"))) must returnStatus(
+      service.orNotFound(ContextRequest((), Request(GET, uri"/symbols/~"))) must returnStatus(
         NotFound)
     }
 
     "Allow passing through of routes with identical prefixes" in {
       ContextRouter[IO, Unit]("" -> letters, "" -> numbers)
-        .orNotFound(ContextRequest((), Request[IO](GET, uri"/1"))) must returnBody("one")
+        .orNotFound(ContextRequest((), Request(GET, uri"/1"))) must returnBody("one")
     }
 
     "Serve custom NotFound responses" in {
       ContextRouter[IO, Unit]("/foo" -> notFound).orNotFound(
-        ContextRequest((), Request[IO](uri = uri"/foo/bar"))) must returnBody("Custom NotFound")
+        ContextRequest((), Request(uri = uri"/foo/bar"))) must returnBody("Custom NotFound")
     }
 
     "Return the fallthrough response if no route is found" in {
       val router = ContextRouter[IO, Unit]("/foo" -> notFound)
-      router(ContextRequest((), Request[IO](uri = uri"/bar"))).value must returnValue(
-        Option.empty[Response[IO]])
+      router(ContextRequest((), Request(uri = uri"/bar"))).value must returnValue(
+        Option.empty[Response])
     }
   }
 }

@@ -42,10 +42,10 @@ object FollowRedirect {
       sensitiveHeaderFilter: CaseInsensitiveString => Boolean = Headers.SensitiveHeaders)(
       client: Client[F])(implicit F: Concurrent[F]): Client[F] = {
     def nextRequest(
-        req: Request[F],
+        req: Request,
         uri: Uri,
         method: Method,
-        cookies: List[ResponseCookie]): Request[F] = {
+        cookies: List[ResponseCookie]): Request = {
       // https://tools.ietf.org/html/rfc7231#section-7.1.
       val nextUri = uri.copy(
         scheme = uri.scheme.orElse(req.uri.scheme),
@@ -53,13 +53,13 @@ object FollowRedirect {
         fragment = uri.fragment.orElse(req.uri.fragment)
       )
 
-      def stripSensitiveHeaders(req: Request[F]): Request[F] =
+      def stripSensitiveHeaders(req: Request): Request =
         if (req.uri.authority != nextUri.authority)
           req.transformHeaders(_.filterNot(h => sensitiveHeaderFilter(h.name)))
         else
           req
 
-      def propagateCookies(req: Request[F]): Request[F] =
+      def propagateCookies(req: Request): Request =
         if (req.uri.authority == nextUri.authority) {
           cookies.foldLeft(req) {
             case (nextReq, cookie) => nextReq.addCookie(cookie.name, cookie.content)
@@ -68,7 +68,7 @@ object FollowRedirect {
           req
         }
 
-      def clearBodyFromGetHead(req: Request[F]): Request[F] =
+      def clearBodyFromGetHead(req: Request): Request =
         method match {
           case GET | HEAD => req.withEmptyBody
           case _ => req
@@ -79,7 +79,7 @@ object FollowRedirect {
       )
     }
 
-    def prepareLoop(req: Request[F], redirects: Int): F[Resource[F, Response[F]]] =
+    def prepareLoop(req: Request, redirects: Int): F[Resource[F, Response]] =
       F.continual(client.run(req).allocated) {
         case Right((resp, dispose)) =>
           (methodForRedirect(req, resp), resp.headers.get(Location)) match {
@@ -102,7 +102,7 @@ object FollowRedirect {
     Client(req => Resource.suspend(prepareLoop(req, 0)))
   }
 
-  private def methodForRedirect[F[_]](req: Request[F], resp: Response[F]): Option[Method] =
+  private def methodForRedirect[F[_]](req: Request, resp: Response): Option[Method] =
     resp.status.code match {
       case 301 | 302 =>
         req.method match {
@@ -152,6 +152,6 @@ object FollowRedirect {
     * Get the redirection URIs for a `response`.
     * Excludes the initial request URI
     */
-  def getRedirectUris[F[_]](response: Response[F]): List[Uri] =
+  def getRedirectUris[F[_]](response: Response): List[Uri] =
     response.attributes.lookup(redirectUrisKey).getOrElse(Nil)
 }

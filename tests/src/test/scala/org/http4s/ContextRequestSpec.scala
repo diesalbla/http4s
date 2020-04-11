@@ -8,7 +8,7 @@ import cats.laws.discipline.NonEmptyTraverseTests
 import org.http4s.laws.discipline.arbitrary._
 
 class ContextRequestSpec extends Specification with Discipline {
-  implicit def nonBodyEquality[F[_], A: Eq]: Eq[ContextRequest[F, A]] =
+  implicit def nonBodyEquality[F[_], A: Eq]: Eq[ContextRequest[A]] =
     Eq.instance {
       case (first, second) =>
         first.context === second.context &&
@@ -17,7 +17,7 @@ class ContextRequestSpec extends Specification with Discipline {
 
   def is =
     checkAll(
-      "ContextRequest[F, *]",
+      "ContextRequest[*]",
       NonEmptyTraverseTests[ContextRequest[Option, *]]
         .nonEmptyTraverse[Option, Int, Int, Int, Int, Option, Option]
     )

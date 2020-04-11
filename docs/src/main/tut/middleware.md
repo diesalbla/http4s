@@ -36,7 +36,7 @@ Then, we can create a middleware that adds a header to successful responses from
 the wrapped service like this.
 
 ```tut:book
-def myMiddle(service: HttpRoutes[IO], header: Header): HttpRoutes[IO] = Kleisli { (req: Request[IO]) =>
+def myMiddle(service: HttpRoutes[IO], header: Header): HttpRoutes[IO] = Kleisli { (req: Request) =>
   service(req).map {
     case Status.Successful(resp) =>
       resp.putHeaders(header)
@@ -53,8 +53,8 @@ just as easily modify the request before we passed it to the service.
 
 Now, let's create a simple service. As mentioned between [service] and [dsl], because `Service`
 is implemented as a [`Kleisli`], which is just a function at heart, we can test a
-service without a server. Because an `HttpService[F]` returns a `F[Response[F]]`,
-we need to call `unsafeRunSync` on the result of the function to extract the `Response[F]`.
+service without a server. Because an `HttpService[F]` returns a `F[Response]`,
+we need to call `unsafeRunSync` on the result of the function to extract the `Response`.
 
 ```tut:book
 val service = HttpRoutes.of[IO] {
@@ -64,8 +64,8 @@ val service = HttpRoutes.of[IO] {
     Ok()
 }
 
-val goodRequest = Request[IO](Method.GET, uri"/")
-val badRequest = Request[IO](Method.GET, uri"/bad")
+val goodRequest = Request(Method.GET, uri"/")
+val badRequest = Request(Method.GET, uri"/bad")
 
 service.orNotFound(goodRequest).unsafeRunSync
 service.orNotFound(badRequest).unsafeRunSync
@@ -87,7 +87,7 @@ it as an `object` and use the `apply` method.
 
 ```tut:book
 object MyMiddle {
-  def addHeader(resp: Response[IO], header: Header) =
+  def addHeader(resp: Response, header: Header) =
     resp match {
       case Status.Successful(resp) => resp.putHeaders(header)
       case resp => resp
@@ -110,7 +110,7 @@ AuthedService` (an alias for `Service[AuthedRequest[T], Response]`. There is a t
 defined for this in the `http4s.server` package:
 
 ```scala
-type AuthMiddleware[F, T] = Middleware[AuthedRequest[F, T], Response[F], Request[F], Response[F]]
+type AuthMiddleware[F, T] = Middleware[AuthedRequest[F, T], Response, Request, Response]
 ```
 See the [Authentication] documentation for more details.
 
@@ -127,7 +127,7 @@ val apiService = HttpRoutes.of[IO] {
 
 val aggregateService = apiService <+> MyMiddle(service, Header("SomeKey", "SomeValue"))
 
-val apiRequest = Request[IO](Method.GET, uri"/api")
+val apiRequest = Request(Method.GET, uri"/api")
 
 aggregateService.orNotFound(goodRequest).unsafeRunSync
 aggregateService.orNotFound(apiRequest).unsafeRunSync

@@ -19,7 +19,7 @@ import javax.net.ssl.SNIHostName
 
 private[client] object ClientHelpers {
   def requestToSocketWithKey[F[_]: Concurrent: Timer: ContextShift](
-      request: Request[F],
+      request: Request,
       tlsContextOpt: Option[TLSContext],
       sg: SocketGroup,
       additionalSocketOptions: List[SocketOptionMapping[_]]
@@ -59,12 +59,12 @@ private[client] object ClientHelpers {
     } yield RequestKeySocket(socket, requestKey)
 
   def request[F[_]: Concurrent: ContextShift: Timer](
-      request: Request[F],
+      request: Request,
       requestKeySocket: RequestKeySocket[F],
       chunkSize: Int,
       maxResponseHeaderSize: Int,
       timeout: Duration
-  )(logger: Logger[F]): Resource[F, Response[F]] = {
+  )(logger: Logger[F]): Resource[F, Response] = {
     val RT: Timer[Resource[F, *]] = Timer[F].mapK(Resource.liftK[F])
 
     def writeRequestToSocket(
@@ -77,13 +77,13 @@ private[client] object ClientHelpers {
         .resource
         .drain
 
-    def onNoTimeout(socket: Socket[F]): Resource[F, Response[F]] =
+    def onNoTimeout(socket: Socket[F]): Resource[F, Response] =
       writeRequestToSocket(socket, None) >>
         Parser.Response.parser(maxResponseHeaderSize)(
           socket.reads(chunkSize, None)
         )(logger)
 
-    def onTimeout(socket: Socket[F], fin: FiniteDuration): Resource[F, Response[F]] =
+    def onTimeout(socket: Socket[F], fin: FiniteDuration): Resource[F, Response] =
       for {
         start <- RT.clock.realTime(MILLISECONDS)
         _ <- writeRequestToSocket(socket, Option(fin))

@@ -25,18 +25,18 @@ object ResponseLogger {
       logBody: Boolean,
       fk: F ~> G,
       redactHeadersWhen: CaseInsensitiveString => Boolean = Headers.SensitiveHeaders.contains,
-      logAction: Option[String => F[Unit]] = None)(http: Kleisli[G, A, Response[F]])(
+      logAction: Option[String => F[Unit]] = None)(http: Kleisli[G, A, Response])(
       implicit G: Bracket[G, Throwable],
-      F: Concurrent[F]): Kleisli[G, A, Response[F]] = {
+      F: Concurrent[F]): Kleisli[G, A, Response] = {
     val fallback: String => F[Unit] = s => Sync[F].delay(logger.info(s))
     val log = logAction.fold(fallback)(identity)
-    Kleisli[G, A, Response[F]] { req =>
+    Kleisli[G, A, Response] { req =>
       http(req)
         .flatMap { response =>
           val out =
             if (!logBody)
               Logger
-                .logMessage[F, Response[F]](response)(logHeaders, logBody, redactHeadersWhen)(log)
+                .logMessage[F, Response](response)(logHeaders, logBody, redactHeadersWhen)(log)
                 .as(response)
             else
               Ref[F].of(Vector.empty[Chunk[Byte]]).map { vec =>
@@ -50,7 +50,7 @@ object ResponseLogger {
                   // Cannot Be Done Asynchronously - Otherwise All Chunks May Not Be Appended Previous to Finalization
                     .observe(_.chunks.flatMap(c => Stream.eval_(vec.update(_ :+ c))))
                     .onFinalizeWeak {
-                      Logger.logMessage[F, Response[F]](response.withBodyStream(newBody))(
+                      Logger.logMessage[F, Response](response.withBodyStream(newBody))(
                         logHeaders,
                         logBody,
                         redactHeadersWhen)(log)
@@ -72,7 +72,7 @@ object ResponseLogger {
       logBody: Boolean,
       redactHeadersWhen: CaseInsensitiveString => Boolean = Headers.SensitiveHeaders.contains,
       logAction: Option[String => F[Unit]] = None)(
-      httpApp: Kleisli[F, A, Response[F]]): Kleisli[F, A, Response[F]] =
+      httpApp: Kleisli[F, A, Response]): Kleisli[F, A, Response] =
     apply(logHeaders, logBody, FunctionK.id[F], redactHeadersWhen, logAction)(httpApp)
 
   def httpRoutes[F[_]: Concurrent, A](
@@ -80,6 +80,6 @@ object ResponseLogger {
       logBody: Boolean,
       redactHeadersWhen: CaseInsensitiveString => Boolean = Headers.SensitiveHeaders.contains,
       logAction: Option[String => F[Unit]] = None)(
-      httpRoutes: Kleisli[OptionT[F, *], A, Response[F]]): Kleisli[OptionT[F, *], A, Response[F]] =
+      httpRoutes: Kleisli[OptionT[F, *], A, Response]): Kleisli[OptionT[F, *], A, Response] =
     apply(logHeaders, logBody, OptionT.liftK[F], redactHeadersWhen, logAction)(httpRoutes)
 }

@@ -15,7 +15,7 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
       implicit val clock = FakeClock[IO]
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test1")
       val meteredRoutes = Metrics[IO](Dropwizard(registry, "server"))(testRoutes)
-      val req = Request[IO](uri = uri("/ok"))
+      val req = Request(uri = uri("/ok"))
 
       val resp = meteredRoutes.orNotFound(req).unsafeRunSync
 
@@ -34,7 +34,7 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test2")
       val meteredRoutes = Metrics[IO](Dropwizard(registry, "server"))(testRoutes)
 
-      val req = Request[IO](uri = uri("/bad-request"))
+      val req = Request(uri = uri("/bad-request"))
 
       val resp = meteredRoutes.orNotFound(req).unsafeRunSync
 
@@ -52,7 +52,7 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
       implicit val clock = FakeClock[IO]
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test3")
       val meteredRoutes = Metrics[IO](Dropwizard(registry, "server"))(testRoutes)
-      val req = Request[IO](uri = uri("/internal-server-error"))
+      val req = Request(uri = uri("/internal-server-error"))
 
       val resp = meteredRoutes.orNotFound(req).unsafeRunSync
 
@@ -70,7 +70,7 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
       implicit val clock = FakeClock[IO]
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test4")
       val meteredRoutes = Metrics[IO](Dropwizard(registry, "server"))(testRoutes)
-      val req = Request[IO](method = GET, uri = uri("/ok"))
+      val req = Request(method = GET, uri = uri("/ok"))
 
       val resp = meteredRoutes.orNotFound(req).unsafeRunSync
 
@@ -88,7 +88,7 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
       implicit val clock = FakeClock[IO]
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test5")
       val meteredRoutes = Metrics[IO](Dropwizard(registry, "server"))(testRoutes)
-      val req = Request[IO](method = POST, uri = uri("/ok"))
+      val req = Request(method = POST, uri = uri("/ok"))
 
       val resp = meteredRoutes.orNotFound(req).unsafeRunSync
 
@@ -106,7 +106,7 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
       implicit val clock = FakeClock[IO]
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test6")
       val meteredRoutes = Metrics[IO](Dropwizard(registry, "server"))(testRoutes)
-      val req = Request[IO](method = PUT, uri = uri("/ok"))
+      val req = Request(method = PUT, uri = uri("/ok"))
 
       val resp = meteredRoutes.orNotFound(req).unsafeRunSync
 
@@ -124,7 +124,7 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
       implicit val clock = FakeClock[IO]
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test7")
       val meteredRoutes = Metrics[IO](Dropwizard(registry, "server"))(testRoutes)
-      val req = Request[IO](method = DELETE, uri = uri("/ok"))
+      val req = Request(method = DELETE, uri = uri("/ok"))
 
       val resp = meteredRoutes.orNotFound(req).unsafeRunSync
 
@@ -142,7 +142,7 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
       implicit val clock = FakeClock[IO]
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test8")
       val meteredRoutes = Metrics[IO](Dropwizard(registry, "server"))(testRoutes)
-      val req = Request[IO](method = GET, uri = uri("/error"))
+      val req = Request(method = GET, uri = uri("/error"))
 
       val resp = meteredRoutes.orNotFound(req).attempt.unsafeRunSync
 
@@ -158,7 +158,7 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
       implicit val clock = FakeClock[IO]
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test9")
       val meteredRoutes = Metrics[IO](Dropwizard(registry, "server"))(testRoutes)
-      val req = Request[IO](method = GET, uri = uri("/abnormal-termination"))
+      val req = Request(method = GET, uri = uri("/abnormal-termination"))
 
       val resp = meteredRoutes.orNotFound(req).unsafeRunSync
 
@@ -173,11 +173,11 @@ class DropwizardServerMetricsSpec extends Http4sSpec with Http4sLegacyMatchersIO
 
     "use the provided request classifier" in {
       implicit val clock = FakeClock[IO]
-      val classifierFunc = (_: Request[IO]) => Some("classifier")
+      val classifierFunc = (_: Request) => Some("classifier")
       val registry: MetricRegistry = SharedMetricRegistries.getOrCreate("test10")
       val meteredRoutes =
         Metrics[IO](ops = Dropwizard(registry, "server"), classifierF = classifierFunc)(testRoutes)
-      val req = Request[IO](uri = uri("/ok"))
+      val req = Request(uri = uri("/ok"))
 
       val resp = meteredRoutes.orNotFound(req).unsafeRunSync
 

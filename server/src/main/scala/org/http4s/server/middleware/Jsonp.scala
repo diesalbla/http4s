@@ -47,7 +47,7 @@ object Jsonp {
       }
     }
 
-  private def jsonp[F[_]: Functor](resp: Response[F], callback: String) = {
+  private def jsonp[F[_]: Functor](resp: Response, callback: String) = {
     val begin = beginJsonp(callback)
     val end = EndJsonp
     val jsonpBody = chunk(begin) ++ resp.body ++ chunk(end)

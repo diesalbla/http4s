@@ -54,13 +54,13 @@ class AsyncHttp4sServlet[F[_]](
 
   private def handleRequest(
       ctx: AsyncContext,
-      request: Request[F],
+      request: Request,
       bodyWriter: BodyWriter[F]): F[Unit] = Deferred[F, Unit].flatMap { gate =>
     // It is an error to add a listener to an async context that is
     // already completed, so we must take care to add the listener
     // before the response can complete.
     val timeout =
-      F.asyncF[Response[F]](cb => gate.complete(ctx.addListener(new AsyncTimeoutHandler(cb))))
+      F.asyncF[Response](cb => gate.complete(ctx.addListener(new AsyncTimeoutHandler(cb))))
     val response =
       gate.get *>
         Sync[F]
@@ -78,7 +78,7 @@ class AsyncHttp4sServlet[F[_]](
 
     case t: Throwable =>
       logger.error(t)("Error processing request")
-      val response = Response[F](Status.InternalServerError)
+      val response = Response(Status.InternalServerError)
       // We don't know what I/O mode we're in here, and we're not rendering a body
       // anyway, so we use a NullBodyWriter.
       val f = renderResponse(response, servletResponse, NullBodyWriter) *>
@@ -89,7 +89,7 @@ class AsyncHttp4sServlet[F[_]](
       F.runAsync(f)(loggingAsyncCallback(logger)).unsafeRunSync()
   }
 
-  private class AsyncTimeoutHandler(cb: Callback[Response[F]]) extends AbstractAsyncListener {
+  private class AsyncTimeoutHandler(cb: Callback[Response]) extends AbstractAsyncListener {
     override def onTimeout(event: AsyncEvent): Unit = {
       val req = event.getAsyncContext.getRequest.asInstanceOf[HttpServletRequest]
       logger.info(s"Request timed out: ${req.getMethod} ${req.getServletPath}${req.getPathInfo}")

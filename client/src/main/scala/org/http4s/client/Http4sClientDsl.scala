@@ -17,7 +17,7 @@ trait Http4sClientDsl[F[_]] {
 
   implicit def http4sHeadersDecoder[T](
       implicit F: Applicative[F],
-      decoder: EntityDecoder[F, T]): EntityDecoder[F, (Headers, T)] = {
+      decoder: EntityDecoder[T]): EntityDecoder[(Headers, T)] = {
     val s = decoder.consumes.toList
     EntityDecoder.decodeBy(s.head, s.tail: _*)(resp =>
       decoder.decode(resp, strict = true).map(t => (resp.headers, t)))

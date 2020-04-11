@@ -17,7 +17,7 @@ class HeaderEchoSpec extends Http4sSpec {
   "HeaderEcho" should {
     "echo a single header in addition to the defaults" in {
       val requestMatchingSingleHeaderKey =
-        Request[IO](
+        Request(
           uri = uri("/request"),
           headers = Headers.of(Header("someheaderkey", "someheadervalue")))
       val testee = HeaderEcho(_ == CaseInsensitiveString("someheaderkey"))(testService)
@@ -30,7 +30,7 @@ class HeaderEchoSpec extends Http4sSpec {
 
     "echo multiple headers" in {
       val requestMatchingMultipleHeaderKeys =
-        Request[IO](
+        Request(
           uri = uri("/request"),
           headers = Headers.of(
             Header("someheaderkey", "someheadervalue"),
@@ -49,7 +49,7 @@ class HeaderEchoSpec extends Http4sSpec {
 
     "echo only the default headers where none match the key" in {
       val requestMatchingNotPresentHeaderKey =
-        Request[IO](
+        Request(
           uri = uri("/request"),
           headers = Headers.of(Header("someunmatchedheader", "someunmatchedvalue")))
 

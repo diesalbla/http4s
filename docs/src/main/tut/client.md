@@ -150,7 +150,7 @@ It is best to run your `F` "at the end of the world."  The "end of
 the world" varies by context:
 
 * In a command line app, it's your main method.
-* In an `HttpApp[F]`, an `F[Response[F]]` is returned to be run by the
+* In an `HttpApp[F]`, an `F[Response]` is returned to be run by the
   server.
 * Here in the REPL, the last line is the end of the world.  Here we go:
 
@@ -240,12 +240,12 @@ import com.codahale.metrics.SharedMetricRegistries
 ```tut:book
 implicit val clock = Clock.create[IO]
 val registry = SharedMetricRegistries.getOrCreate("default")
-val requestMethodClassifier = (r: Request[IO]) => Some(r.method.toString.toLowerCase)
+val requestMethodClassifier = (r: Request) => Some(r.method.toString.toLowerCase)
 
 val meteredClient = Metrics[IO](Dropwizard(registry, "prefix"), requestMethodClassifier)(httpClient)
 ```
 
-A `classifier` is just a function Request[F] => Option[String] that allows
+A `classifier` is just a function Request => Option[String] that allows
 to add a subprefix to every metric based on the `Request`
 
 #### Prometheus Metrics Middleware
@@ -270,7 +270,7 @@ import io.prometheus.client.CollectorRegistry
 ```
 ```tut:book
 implicit val clock = Clock.create[IO]
-val requestMethodClassifier = (r: Request[IO]) => Some(r.method.toString.toLowerCase)
+val requestMethodClassifier = (r: Request) => Some(r.method.toString.toLowerCase)
 
 val meteredClient: Resource[IO, Client[IO]] = 
   for {
@@ -280,7 +280,7 @@ val meteredClient: Resource[IO, Client[IO]] =
 ```
 
 
-A `classifier` is just a function Request[F] => Option[String] that allows
+A `classifier` is just a function Request => Option[String] that allows
 to add a label to every metric based on the `Request`
 
 ## Examples
@@ -346,7 +346,7 @@ Take a look at [json].
 The reusable way to decode/encode a request is to write a custom `EntityDecoder`
 and `EntityEncoder`. For that topic, take a look at [entity].
 
-If you prefer a more fine-grained approach, some of the methods take a `Response[F]
+If you prefer a more fine-grained approach, some of the methods take a `Response
 => F[A]` argument, such as `fetch` or `get`, which lets you add a function which includes the
 decoding functionality, but ignores the media type.
 

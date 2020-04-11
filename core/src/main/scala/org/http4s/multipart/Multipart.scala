@@ -3,8 +3,8 @@ package multipart
 
 import org.http4s.headers._
 
-final case class Multipart[F[_]](parts: Vector[Part[F]], boundary: Boundary = Boundary.create) {
-  def headers: Headers =
+final case class Multipart(parts: Vector[Part], boundary: Boundary = Boundary.create) {
+  lazy val headers: Headers =
     Headers(
       List(
         `Transfer-Encoding`(TransferCoding.chunked),

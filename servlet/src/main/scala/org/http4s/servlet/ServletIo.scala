@@ -18,7 +18,7 @@ import scala.annotation.tailrec
 sealed abstract class ServletIo[F[_]: Async] {
   protected[servlet] val F = Async[F]
 
-  protected[servlet] def reader(servletRequest: HttpServletRequest): EntityBody[F]
+  protected[servlet] def reader(servletRequest: HttpServletRequest): EntityBody
 
   /** May install a listener on the servlet response. */
   protected[servlet] def initWriter(servletResponse: HttpServletResponse): BodyWriter[F]
@@ -30,18 +30,18 @@ sealed abstract class ServletIo[F[_]: Async] {
   * This is more CPU efficient per request than [[NonBlockingServletIo]], but is likely to
   * require a larger request thread pool for the same load.
   */
-final case class BlockingServletIo[F[_]: Effect: ContextShift](chunkSize: Int, blocker: Blocker)
-    extends ServletIo[F] {
-  override protected[servlet] def reader(servletRequest: HttpServletRequest): EntityBody[F] =
-    io.readInputStream[F](F.pure(servletRequest.getInputStream), chunkSize, blocker)
+final case class BlockingServletIo(chunkSize: Int, blocker: Blocker)(implicit cs: ContextShift[IO])
+    extends ServletIo[IO] {
+  override protected[servlet] def reader(servletRequest: HttpServletRequest): EntityBody =
+    io.readInputStream(IO.pure(servletRequest.getInputStream), chunkSize, blocker)
 
   override protected[servlet] def initWriter(
-      servletResponse: HttpServletResponse): BodyWriter[F] = { (response: Response[F]) =>
+      servletResponse: HttpServletResponse): BodyWriter[F] = { (response: Response) =>
     val out = servletResponse.getOutputStream
     val flush = response.isChunked
     response.body.chunks
       .evalTap { chunk =>
-        blocker.delay[F, Unit] {
+        blocker.delay[IO, Unit] {
           // Avoids copying for specialized chunks
           val byteChunk = chunk.toBytes
           out.write(byteChunk.values, byteChunk.offset, byteChunk.length)
@@ -68,7 +68,7 @@ final case class NonBlockingServletIo[F[_]: Effect](chunkSize: Int) extends Serv
   private[this] def rightSome[A](a: A) = Right(Some(a))
   private[this] val rightNone = Right(None)
 
-  override protected[servlet] def reader(servletRequest: HttpServletRequest): EntityBody[F] =
+  override protected[servlet] def reader(servletRequest: HttpServletRequest): EntityBody =
     Stream.suspend {
       sealed trait State
       case object Init extends State
@@ -230,7 +230,7 @@ final case class NonBlockingServletIo[F[_]: Effect](chunkSize: Int) extends Serv
         }
     }
 
-    { (response: Response[F]) =>
+    { (response: Response) =>
       if (response.isChunked)
         autoFlush = true
       response.body.chunks

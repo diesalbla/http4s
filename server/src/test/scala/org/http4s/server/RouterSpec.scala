@@ -36,7 +36,7 @@ class RouterSpec extends Http4sSpec with Http4sLegacyMatchersIO {
   }
 
   def middleware(routes: HttpRoutes[IO]): HttpRoutes[IO] =
-    Kleisli((r: Request[IO]) =>
+    Kleisli((r: Request) =>
       if (r.uri.query.containsQueryParam("block")) OptionT.liftF(Ok(r.uri.path)) else routes(r))
 
   val service = Router[IO](
@@ -49,43 +49,43 @@ class RouterSpec extends Http4sSpec with Http4sLegacyMatchersIO {
 
   "A router" should {
     "translate mount prefixes" in {
-      service.orNotFound(Request[IO](GET, uri"/numbers/1")) must returnBody("one")
-      service.orNotFound(Request[IO](GET, uri"/numb/1")) must returnBody("two")
-      service.orNotFound(Request[IO](GET, uri"/numbe?block")) must returnStatus(NotFound)
+      service.orNotFound(Request(GET, uri"/numbers/1")) must returnBody("one")
+      service.orNotFound(Request(GET, uri"/numb/1")) must returnBody("two")
+      service.orNotFound(Request(GET, uri"/numbe?block")) must returnStatus(NotFound)
     }
 
     "require the correct prefix" in {
-      val resp = service.orNotFound(Request[IO](GET, uri"/letters/1")).unsafeRunSync()
+      val resp = service.orNotFound(Request(GET, uri"/letters/1")).unsafeRunSync()
       resp must not(haveBody("bee"))
       resp must not(haveBody("one"))
       resp must haveStatus(NotFound)
     }
 
     "support root mappings" in {
-      service.orNotFound(Request[IO](GET, uri"/about")) must returnBody("about")
+      service.orNotFound(Request(GET, uri"/about")) must returnBody("about")
     }
 
     "match longer prefixes first" in {
-      service.orNotFound(Request[IO](GET, uri"/shadow/shadowed")) must returnBody("visible")
+      service.orNotFound(Request(GET, uri"/shadow/shadowed")) must returnBody("visible")
     }
 
     "404 on unknown prefixes" in {
-      service.orNotFound(Request[IO](GET, uri"/symbols/~")) must returnStatus(NotFound)
+      service.orNotFound(Request(GET, uri"/symbols/~")) must returnStatus(NotFound)
     }
 
     "Allow passing through of routes with identical prefixes" in {
       Router[IO]("" -> letters, "" -> numbers)
-        .orNotFound(Request[IO](GET, uri"/1")) must returnBody("one")
+        .orNotFound(Request(GET, uri"/1")) must returnBody("one")
     }
 
     "Serve custom NotFound responses" in {
-      Router[IO]("/foo" -> notFound).orNotFound(Request[IO](uri = uri"/foo/bar")) must returnBody(
+      Router[IO]("/foo" -> notFound).orNotFound(Request(uri = uri"/foo/bar")) must returnBody(
         "Custom NotFound")
     }
 
     "Return the fallthrough response if no route is found" in {
       val router = Router[IO]("/foo" -> notFound)
-      router(Request[IO](uri = uri"/bar")).value must returnValue(Option.empty[Response[IO]])
+      router(Request(uri = uri"/bar")).value must returnValue(Option.empty[Response])
     }
   }
 }

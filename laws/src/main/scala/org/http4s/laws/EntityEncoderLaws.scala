@@ -9,7 +9,7 @@ import org.http4s.headers.{`Content-Length`, `Transfer-Encoding`}
 trait EntityEncoderLaws[F[_], A] {
   implicit def F: Sync[F]
 
-  implicit def encoder: EntityEncoder[F, A]
+  implicit def encoder: EntityEncoder[A]
 
   def accurateContentLengthIfDefined(a: A): IsEq[F[Boolean]] =
     (for {
@@ -29,7 +29,7 @@ trait EntityEncoderLaws[F[_], A] {
 object EntityEncoderLaws {
   def apply[F[_], A](
       implicit F0: Sync[F],
-      entityEncoderFA: EntityEncoder[F, A]
+      entityEncoderFA: EntityEncoder[A]
   ): EntityEncoderLaws[F, A] = new EntityEncoderLaws[F, A] {
     val F = F0
     val encoder = entityEncoderFA

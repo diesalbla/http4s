@@ -31,7 +31,7 @@ trait ServerBuilder[F[_]] extends BackendBuilder[F, Server] {
     * parsing a request or handling a context timeout.
     */
   def withServiceErrorHandler(
-      serviceErrorHandler: Request[F] => PartialFunction[Throwable, F[Response[F]]]): Self
+      serviceErrorHandler: Request => PartialFunction[Throwable, F[Response]]): Self
 
   /** Returns a Server resource.  The resource is not acquired until the
     * server is started and ready to accept requests.
@@ -42,7 +42,7 @@ trait ServerBuilder[F[_]] extends BackendBuilder[F, Server] {
     * Runs the server as a process that never emits.  Useful for a server
     * that runs for the rest of the JVM's life.
     */
-  final def serve: Stream[F, ExitCode] =
+  final def serve: Stream[IO, ExitCode] =
     for {
       signal <- Stream.eval(SignallingRef[F, Boolean](false))
       exitCode <- Stream.eval(Ref[F].of(ExitCode.Success))
@@ -55,7 +55,7 @@ trait ServerBuilder[F[_]] extends BackendBuilder[F, Server] {
     */
   final def serveWhile(
       terminateWhenTrue: Signal[F, Boolean],
-      exitWith: Ref[F, ExitCode]): Stream[F, ExitCode] =
+      exitWith: Ref[F, ExitCode]): Stream[IO, ExitCode] =
     Stream.resource(resource) *> (terminateWhenTrue.discrete
       .takeWhile(_ === false)
       .drain ++ Stream.eval(exitWith.get))

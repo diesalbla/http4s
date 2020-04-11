@@ -63,7 +63,7 @@ object DigestAuth {
     * AuthorizationHeader, the corresponding nonce counter (nc) is increased.
     */
   def challenge[F[_], A](realm: String, store: AuthenticationStore[F, A], nonceKeeper: NonceKeeper)(
-      implicit F: Sync[F]): Kleisli[F, Request[F], Either[Challenge, AuthedRequest[F, A]]] =
+      implicit F: Sync[F]): Kleisli[F, Request, Either[Challenge, AuthedRequest[F, A]]] =
     Kleisli { req =>
       def paramsToChallenge(params: Map[String, String]) =
         Either.left(Challenge("Digest", realm, params))
@@ -79,7 +79,7 @@ object DigestAuth {
       realm: String,
       store: AuthenticationStore[F, A],
       nonceKeeper: NonceKeeper,
-      req: Request[F])(implicit F: Applicative[F]): F[AuthReply[A]] =
+      req: Request)(implicit F: Applicative[F]): F[AuthReply[A]] =
     req.headers.get(Authorization) match {
       case Some(Authorization(Credentials.AuthParams(AuthScheme.Digest, params))) =>
         checkAuthParams(realm, store, nonceKeeper, req, params)
@@ -104,7 +104,7 @@ object DigestAuth {
       realm: String,
       store: AuthenticationStore[F, A],
       nonceKeeper: NonceKeeper,
-      req: Request[F],
+      req: Request,
       paramsNel: NonEmptyList[(String, String)])(implicit F: Applicative[F]): F[AuthReply[A]] = {
     val params = paramsNel.toList.toMap
     if (!Set("realm", "nonce", "nc", "username", "cnonce", "qop").subsetOf(params.keySet))

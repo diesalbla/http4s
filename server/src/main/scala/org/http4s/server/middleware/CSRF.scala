@@ -420,7 +420,7 @@ object CSRF {
     * @return
     */
   def defaultOriginCheck[F[_]](
-      r: Request[F],
+      r: Request,
       host: String,
       sc: Scheme,
       port: Option[Int]): Boolean =
@@ -437,7 +437,7 @@ object CSRF {
       .exists(u =>
         u.uri.host.exists(_.value == host) && u.uri.scheme.contains(sc) && u.uri.port == port)
 
-  def proxyOriginCheck[F[_]](r: Request[F], host: Host, xff: `X-Forwarded-For`): Boolean =
+  def proxyOriginCheck[F[_]](r: Request, host: Host, xff: `X-Forwarded-For`): Boolean =
     r.headers.get(Host).contains(host) || r.headers.get(`X-Forwarded-For`).contains(xff)
 
   ///
@@ -469,7 +469,7 @@ object CSRF {
     }
 
   private[middleware] def cookieFromHeaders[F[_]](
-      request: Request[F],
+      request: Request,
       cookieName: String): Option[RequestCookie] =
     HCookie
       .from(request.headers)

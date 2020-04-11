@@ -7,7 +7,7 @@ import cats.implicits._
 import Shared._
 
 private[ember] object Encoder {
-  def respToBytes[F[_]: Sync](resp: Response[F]): Stream[F, Byte] = {
+  def respToBytes[F[_]: Sync](resp: Response): Stream[IO, Byte] = {
     val headerStrings: List[String] =
       resp.headers.toList.map(h => h.name.show + ": " + h.value).toList
 
@@ -21,7 +21,7 @@ private[ember] object Encoder {
       body
   }
 
-  def reqToBytes[F[_]: Sync](req: Request[F]): Stream[F, Byte] = {
+  def reqToBytes[F[_]: Sync](req: Request): Stream[IO, Byte] = {
     // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
     val requestLine =
       show"${req.method.renderString} ${req.uri.renderString} ${req.httpVersion.renderString}"

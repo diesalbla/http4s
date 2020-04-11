@@ -127,8 +127,8 @@ class ThrottleSpec(implicit ee: ExecutionEnv)
         override def takeToken: IO[TokenAvailability] = TokenAvailable.pure[IO]
       }
 
-      val testee = Throttle(limitNotReachedBucket, defaultResponse[IO] _)(alwaysOkApp)
-      val req = Request[IO](uri = uri("/"))
+      val testee = Throttle(limitNotReachedBucket, defaultResponse _)(alwaysOkApp)
+      val req = Request(uri = uri("/"))
 
       testee(req) must returnStatus(Status.Ok)
     }
@@ -138,8 +138,8 @@ class ThrottleSpec(implicit ee: ExecutionEnv)
         override def takeToken: IO[TokenAvailability] = TokenUnavailable(None).pure[IO]
       }
 
-      val testee = Throttle(limitReachedBucket, defaultResponse[IO] _)(alwaysOkApp)
-      val req = Request[IO](uri = uri("/"))
+      val testee = Throttle(limitReachedBucket, defaultResponse _)(alwaysOkApp)
+      val req = Request(uri = uri("/"))
 
       testee(req) must returnStatus(Status.TooManyRequests)
     }

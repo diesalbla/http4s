@@ -33,8 +33,8 @@ object Metrics {
     * @param client the [[Client]] to gather metrics from
     * @return the metrics middleware wrapping the [[Client]]
     */
-  def apply[F[_]](ops: MetricsOps[F], classifierF: Request[F] => Option[String] = {
-    (_: Request[F]) =>
+  def apply[F[_]](ops: MetricsOps[F], classifierF: Request => Option[String] = {
+    (_: Request) =>
       None
   })(client: Client[F])(implicit F: Sync[F], clock: Clock[F]): Client[F] =
     Client(withMetrics(client, ops, classifierF))
@@ -42,8 +42,8 @@ object Metrics {
   private def withMetrics[F[_]](
       client: Client[F],
       ops: MetricsOps[F],
-      classifierF: Request[F] => Option[String])(
-      req: Request[F])(implicit F: Sync[F], clock: Clock[F]): Resource[F, Response[F]] =
+      classifierF: Request => Option[String])(
+      req: Request)(implicit F: Sync[F], clock: Clock[F]): Resource[F, Response] =
     (for {
       statusRef <- Resource.liftF(Ref.of[F, Option[Status]](None))
       start <- Resource.liftF(clock.monotonic(TimeUnit.NANOSECONDS))
@@ -63,8 +63,8 @@ object Metrics {
       _ <- Resource.liftF(ops.recordHeadersTime(req.method, end - start, classifierF(req)))
     } yield resp)
       .handleErrorWith { (e: Throwable) =>
-        Resource.liftF[F, Response[F]](
-          registerError(ops, classifierF(req))(e) *> F.raiseError[Response[F]](e)
+        Resource.liftF[F, Response](
+          registerError(ops, classifierF(req))(e) *> F.raiseError[Response](e)
         )
       }
 

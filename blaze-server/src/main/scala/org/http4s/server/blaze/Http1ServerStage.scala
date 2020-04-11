@@ -145,12 +145,12 @@ private[blaze] class Http1ServerStage[F[_]](
           }
         } catch {
           case t: BadMessage =>
-            badMessage("Error parsing status or headers in requestLoop()", t, Request[F]())
+            badMessage("Error parsing status or headers in requestLoop()", t, Request())
           case t: Throwable =>
             internalServerError(
               "error in requestLoop()",
               t,
-              Request[F](),
+              Request(),
               () => Future.successful(emptyBuffer))
         }
       }
@@ -194,13 +194,13 @@ private[blaze] class Http1ServerStage[F[_]](
           }
         })
       case Left((e, protocol)) =>
-        badMessage(e.details, new BadMessage(e.sanitized), Request[F]().withHttpVersion(protocol))
+        badMessage(e.details, new BadMessage(e.sanitized), Request().withHttpVersion(protocol))
     }
   }
 
   protected def renderResponse(
-      req: Request[F],
-      resp: Response[F],
+      req: Request,
+      resp: Response,
       bodyCleanup: () => Future[ByteBuffer]): Unit = {
     val rr = new StringWriter(512)
     rr << req.httpVersion << ' ' << resp.status.code << ' ' << resp.status.reason << "\r\n"
@@ -308,9 +308,9 @@ private[blaze] class Http1ServerStage[F[_]](
   final protected def badMessage(
       debugMessage: String,
       t: ParserException,
-      req: Request[F]): Unit = {
+      req: Request): Unit = {
     logger.debug(t)(s"Bad Request: $debugMessage")
-    val resp = Response[F](Status.BadRequest)
+    val resp = Response(Status.BadRequest)
       .withHeaders(Connection("close".ci), `Content-Length`.zero)
     renderResponse(req, resp, () => Future.successful(emptyBuffer))
   }
@@ -319,15 +319,15 @@ private[blaze] class Http1ServerStage[F[_]](
   final protected def internalServerError(
       errorMsg: String,
       t: Throwable,
-      req: Request[F],
+      req: Request,
       bodyCleanup: () => Future[ByteBuffer]): Unit = {
     logger.error(t)(errorMsg)
-    val resp = Response[F](Status.InternalServerError)
+    val resp = Response(Status.InternalServerError)
       .withHeaders(Connection("close".ci), `Content-Length`.zero)
     renderResponse(req, resp, bodyCleanup) // will terminate the connection due to connection: close header
   }
 
-  private[this] val raceTimeout: Request[F] => F[Response[F]] =
+  private[this] val raceTimeout: Request => F[Response] =
     responseHeaderTimeout match {
       case finite: FiniteDuration =>
         val timeoutResponse = timer.sleep(finite).as(Response.timeout[F])

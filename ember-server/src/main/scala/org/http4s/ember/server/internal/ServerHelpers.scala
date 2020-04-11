@@ -20,10 +20,10 @@ private[server] object ServerHelpers {
       sg: SocketGroup,
       tlsInfoOpt: Option[(TLSContext, TLSParameters)],
       // Defaults
-      onError: Throwable => Response[F] = { (_: Throwable) =>
-        Response[F](Status.InternalServerError)
+      onError: Throwable => Response = { (_: Throwable) =>
+        Response(Status.InternalServerError)
       },
-      onWriteFailure: (Option[Request[F]], Response[F], Throwable) => F[Unit],
+      onWriteFailure: (Option[Request], Response, Throwable) => F[Unit],
       terminationSignal: Option[SignallingRef[F, Boolean]] = None,
       maxConcurrency: Int = Int.MaxValue,
       receiveBufferSize: Int = 256 * 1024,
@@ -31,7 +31,7 @@ private[server] object ServerHelpers {
       requestHeaderReceiveTimeout: Duration = 5.seconds,
       additionalSocketOptions: List[SocketOptionMapping[_]] = List.empty,
       logger: Logger[F]
-  )(implicit C: Clock[F]): Stream[F, Nothing] = {
+  )(implicit C: Clock[F]): Stream[IO, Nothing] = {
     // Termination Signal, if not present then does not terminate.
     val termSignal: F[SignallingRef[F, Boolean]] =
       terminationSignal.fold(SignallingRef[F, Boolean](false))(_.pure[F])
@@ -40,7 +40,7 @@ private[server] object ServerHelpers {
         socket: Socket[F],
         requestHeaderReceiveTimeout: Duration,
         receiveBufferSize: Int
-    ): F[Request[F]] = {
+    ): F[Request] = {
       val (initial, readDuration) = requestHeaderReceiveTimeout match {
         case fin: FiniteDuration => (true, fin)
         case _ => (false, 0.millis)
@@ -79,13 +79,13 @@ private[server] object ServerHelpers {
                   }
                 }
                 .use { socket =>
-                  val app: F[(Request[F], Response[F])] = for {
+                  val app: F[(Request, Response)] = for {
                     req <- socketReadRequest(socket, requestHeaderReceiveTimeout, receiveBufferSize)
                     resp <- httpApp
                       .run(req)
                       .handleError(onError)
                   } yield (req, resp)
-                  def send(request: Option[Request[F]], resp: Response[F]): F[Unit] =
+                  def send(request: Option[Request], resp: Response): F[Unit] =
                     Stream(resp)
                       .covary[F]
                       .flatMap(Encoder.respToBytes[F])

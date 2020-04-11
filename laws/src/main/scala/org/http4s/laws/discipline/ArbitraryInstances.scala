@@ -722,7 +722,7 @@ private[http4s] trait ArbitraryInstances {
       }
     }
 
-  implicit def http4sTestingCogenForEntityBody[F[_]](implicit F: Effect[F]): Cogen[EntityBody[F]] =
+  implicit def http4sTestingCogenForEntityBody[F[_]](implicit F: Effect[F]): Cogen[EntityBody] =
     catsEffectLawsCogenForIO[Vector[Byte]].contramap { stream =>
       var bytes: Vector[Byte] = null
       val readBytes = IO(bytes)
@@ -742,10 +742,10 @@ private[http4s] trait ArbitraryInstances {
     })
 
   implicit def http4sTestingCogenForEntity[F[_]](implicit F: Effect[F]): Cogen[Entity[F]] =
-    Cogen[(EntityBody[F], Option[Long])].contramap(entity => (entity.body, entity.length))
+    Cogen[(EntityBody, Option[Long])].contramap(entity => (entity.body, entity.length))
 
   implicit def http4sTestingArbitraryForEntityEncoder[F[_], A](
-      implicit CA: Cogen[A]): Arbitrary[EntityEncoder[F, A]] =
+      implicit CA: Cogen[A]): Arbitrary[EntityEncoder[A]] =
     Arbitrary(for {
       f <- getArbitrary[A => Entity[F]]
       hs <- getArbitrary[Headers]
@@ -754,20 +754,20 @@ private[http4s] trait ArbitraryInstances {
   implicit def http4sTestingArbitraryForEntityDecoder[F[_], A](
       implicit
       F: Effect[F],
-      g: Arbitrary[DecodeResult[F, A]]) =
+      g: Arbitrary[DecodeResult[A]]) =
     Arbitrary(for {
-      f <- getArbitrary[(Media[F], Boolean) => DecodeResult[F, A]]
+      f <- getArbitrary[(Media, Boolean) => DecodeResult[A]]
       mrs <- getArbitrary[Set[MediaRange]]
-    } yield new EntityDecoder[F, A] {
-      def decode(m: Media[F], strict: Boolean): DecodeResult[F, A] = f(m, strict)
+    } yield new EntityDecoder[A] {
+      def decode(m: Media, strict: Boolean): DecodeResult[A] = f(m, strict)
       def consumes = mrs
     })
 
-  implicit def http4sTestingCogenForMedia[F[_]](implicit F: Effect[F]): Cogen[Media[F]] =
-    Cogen[(Headers, EntityBody[F])].contramap(m => (m.headers, m.body))
+  implicit def http4sTestingCogenForMedia[F[_]](implicit F: Effect[F]): Cogen[Media] =
+    Cogen[(Headers, EntityBody)].contramap(m => (m.headers, m.body))
 
-  implicit def http4sTestingCogenForMessage[F[_]](implicit F: Effect[F]): Cogen[Message[F]] =
-    Cogen[(Headers, EntityBody[F])].contramap(m => (m.headers, m.body))
+  implicit def http4sTestingCogenForMessage[F[_]](implicit F: Effect[F]): Cogen[Message] =
+    Cogen[(Headers, EntityBody)].contramap(m => (m.headers, m.body))
 
   implicit def http4sTestingCogenForHeaders: Cogen[Headers] =
     Cogen[List[Header]].contramap(_.toList)
@@ -819,11 +819,11 @@ private[http4s] trait ArbitraryInstances {
       }
     }
 
-  private[http4s] implicit def http4sTestingArbitraryForMessage[F[_]]: Arbitrary[Message[F]] =
+  private[http4s] implicit def http4sTestingArbitraryForMessage[F[_]]: Arbitrary[Message] =
     // TODO this is bad because the underlying generators are bad
-    Arbitrary(Gen.oneOf(getArbitrary[Request[F]], getArbitrary[Response[F]]))
+    Arbitrary(Gen.oneOf(getArbitrary[Request], getArbitrary[Response]))
 
-  private[http4s] implicit def http4sTestingArbitraryForRequest[F[_]]: Arbitrary[Request[F]] =
+  private[http4s] implicit def http4sTestingArbitraryForRequest[F[_]]: Arbitrary[Request] =
     Arbitrary {
       // TODO some methods don't take bodies
       // TODO some arbitrary headers are mutually exclusive
@@ -842,16 +842,16 @@ private[http4s] trait ArbitraryInstances {
       }
     }
   private[http4s] implicit def http4sTestingArbitraryForContextRequest[F[_], A: Arbitrary]
-      : Arbitrary[ContextRequest[F, A]] =
+      : Arbitrary[ContextRequest[A]] =
     // TODO this is bad because the underlying generators are bad
     Arbitrary {
       for {
         a <- getArbitrary[A]
-        request <- getArbitrary[Request[F]]
+        request <- getArbitrary[Request]
       } yield new ContextRequest(a, request)
     }
 
-  private[http4s] implicit def http4sTestingArbitraryForResponse[F[_]]: Arbitrary[Response[F]] =
+  private[http4s] implicit def http4sTestingArbitraryForResponse[F[_]]: Arbitrary[Response] =
     Arbitrary {
       // TODO some statuses don't take bodies
       // TODO some arbitrary headers are mutually exclusive

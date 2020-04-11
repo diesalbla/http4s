@@ -7,8 +7,8 @@ import cats.data.{Kleisli, OptionT}
 
 object ContextMiddleware {
   def apply[F[_]: Monad, T](
-      getContext: Kleisli[OptionT[F, *], Request[F], T]): ContextMiddleware[F, T] =
-    _.compose(Kleisli((r: Request[F]) => getContext(r).map(ContextRequest(_, r))))
+      getContext: Kleisli[OptionT[F, *], Request, T]): ContextMiddleware[F, T] =
+    _.compose(Kleisli((r: Request) => getContext(r).map(ContextRequest(_, r))))
 
   /**
     * Useful for Testing, Construct a Middleware from a single

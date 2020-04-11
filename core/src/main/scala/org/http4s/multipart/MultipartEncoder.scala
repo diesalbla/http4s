@@ -3,14 +3,15 @@ package multipart
 
 import java.nio.charset.StandardCharsets
 
+import cats.effect.IO
 import fs2._
 import org.http4s.internal.ChunkWriter
 
-private[http4s] class MultipartEncoder[F[_]] extends EntityEncoder[F, Multipart[F]] {
+private[http4s] class MultipartEncoder extends EntityEncoder[Multipart] {
   //TODO: Refactor encoders to create headers dependent on value.
   def headers: Headers = Headers.empty
 
-  def toEntity(mp: Multipart[F]): Entity[F] =
+  def toEntity(mp: Multipart): Entity =
     Entity(renderParts(mp.boundary)(mp.parts), None)
 
   val dash: String = "--"
@@ -50,15 +51,15 @@ private[http4s] class MultipartEncoder[F[_]] extends EntityEncoder[F, Multipart[
       }
       .toChunk
 
-  def renderPart(prelude: Chunk[Byte])(part: Part[F]): Stream[F, Byte] =
+  def renderPart(prelude: Chunk[Byte])(part: Part): Stream[IO, Byte] =
     Stream.chunk(prelude) ++
       Stream.chunk(renderHeaders(part.headers)) ++
       Stream.chunk(Chunk.bytes(Boundary.CRLF.getBytes(StandardCharsets.UTF_8))) ++
       part.body
 
-  def renderParts(boundary: Boundary)(parts: Vector[Part[F]]): Stream[F, Byte] =
+  def renderParts(boundary: Boundary)(parts: Vector[Part]): Stream[IO, Byte] =
     if (parts.isEmpty) {
-      Stream.empty.covary[F]
+      Stream.empty.covary[IO]
     } else {
       parts.tail
         .foldLeft(renderPart(start(boundary))(parts.head)) { (acc, part) =>

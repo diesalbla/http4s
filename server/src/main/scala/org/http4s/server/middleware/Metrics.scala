@@ -38,7 +38,7 @@ object Metrics {
       ops: MetricsOps[F],
       emptyResponseHandler: Option[Status] = Status.NotFound.some,
       errorResponseHandler: Throwable => Option[Status] = _ => Status.InternalServerError.some,
-      classifierF: Request[F] => Option[String] = { (_: Request[F]) =>
+      classifierF: Request => Option[String] = { (_: Request) =>
         None
       }
   )(routes: HttpRoutes[F])(implicit F: Sync[F], clock: Clock[F]): HttpRoutes[F] =
@@ -50,8 +50,8 @@ object Metrics {
       routes: HttpRoutes[F],
       emptyResponseHandler: Option[Status],
       errorResponseHandler: Throwable => Option[Status],
-      classifierF: Request[F] => Option[String]
-  )(req: Request[F])(implicit clock: Clock[F]): OptionT[F, Response[F]] = OptionT {
+      classifierF: Request => Option[String]
+  )(req: Request)(implicit clock: Clock[F]): OptionT[F, Response] = OptionT {
     for {
       initialTime <- clock.monotonic(TimeUnit.NANOSECONDS)
       decreaseActiveRequestsOnce <- decreaseActiveRequestsAtMostOnce(ops, classifierF(req))
@@ -70,7 +70,7 @@ object Metrics {
                 emptyResponseHandler,
                 classifierF(req),
                 decreaseActiveRequestsOnce)
-                .as(Option.empty[Response[F]])
+                .as(Option.empty[Response])
             )(
               onResponse(
                 req.method,
@@ -129,7 +129,7 @@ object Metrics {
       ops: MetricsOps[F],
       classifier: Option[String],
       decreaseActiveRequestsOnce: F[Unit]
-  )(r: Response[F])(implicit clock: Clock[F]): Response[F] = {
+  )(r: Response)(implicit clock: Clock[F]): Response = {
     val newBody = r.body
       .onFinalize {
         for {
@@ -143,7 +143,7 @@ object Metrics {
         for {
           now <- Stream.eval(clock.monotonic(TimeUnit.NANOSECONDS))
           _ <- Stream.eval(ops.recordAbnormalTermination(now - start, Abnormal, classifier))
-          r <- Stream.raiseError[F](e)
+          r <- Stream.raiseError[IO](e)
         } yield r)
     r.copy(body = newBody)
   }

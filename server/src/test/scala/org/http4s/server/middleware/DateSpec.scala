@@ -11,14 +11,14 @@ class DateSpec extends Http4sSpec with CatsIO {
   override implicit val timer: Timer[IO] = Http4sSpec.TestTimer
 
   val service: HttpRoutes[IO] = HttpRoutes.of[IO] {
-    case _ => Response[IO](Status.Ok).pure[IO]
+    case _ => Response(Status.Ok).pure[IO]
   }
 
   // Hack for https://github.com/typelevel/cats-effect/pull/682
   val testService = Date(service)(Sync[OptionT[IO, *]], Clock.deriveOptionT[IO])
   val testApp = Date(service.orNotFound)
 
-  val req = Request[IO]()
+  val req = Request()
 
   "Date" should {
     "always be very shortly before the current time httpRoutes" >> {
@@ -51,7 +51,7 @@ class DateSpec extends Http4sSpec with CatsIO {
       val service = HttpRoutes
         .of[IO] {
           case _ =>
-            Response[IO](Status.Ok)
+            Response(Status.Ok)
               .putHeaders(HDate(HttpDate.Epoch))
               .pure[IO]
         }

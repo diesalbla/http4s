@@ -47,6 +47,6 @@ object UrlFormLifter {
       }
     }
 
-  private def checkRequest[F[_]](req: Request[F]): Boolean =
+  private def checkRequest[F[_]](req: Request): Boolean =
     req.method == Method.POST || req.method == Method.PUT
 }

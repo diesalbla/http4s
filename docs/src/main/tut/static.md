@@ -118,7 +118,7 @@ For custom behaviour, `StaticFile.fromResource` can be used. In this example,
 only files matching a list of extensions are served. Append to the `List` as needed.
 
 ```tut:book
-def static(file: String, blocker: Blocker, request: Request[IO]) =
+def static(file: String, blocker: Blocker, request: Request) =
   StaticFile.fromResource("/" + file, blocker, Some(request)).getOrElseF(NotFound())
 
 val routes = HttpRoutes.of[IO] {

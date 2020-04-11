@@ -23,7 +23,7 @@ object Logger {
       )
     )
 
-  def logMessage[F[_], A <: Message[F]](message: A)(
+  def logMessage[F[_], A <: Message](message: A)(
       logHeaders: Boolean,
       logBody: Boolean,
       redactHeadersWhen: CaseInsensitiveString => Boolean = Headers.SensitiveHeaders.contains)(

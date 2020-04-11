@@ -77,7 +77,7 @@ object PathInHttpRoutesSpec extends Http4sSpec with Http4sLegacyMatchersIO {
       NotFound(s"404 Not Found: ${r.pathInfo}")
   }
 
-  def serve(req: Request[IO]): Response[IO] =
+  def serve(req: Request): Response =
     app(req).unsafeRunSync
 
   "Path DSL within HttpService" should {

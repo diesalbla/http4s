@@ -2,6 +2,7 @@ package org.http4s
 
 import fs2._
 import fs2.text.{utf8Decode, utf8Encode}
+import cats.effect.IO
 import java.util.regex.Pattern
 import org.http4s.ServerSentEvent._
 import org.http4s.util.{Renderable, Writer}
@@ -42,15 +43,15 @@ object ServerSentEvent {
   private val FieldSeparator =
     Pattern.compile(""": ?""")
 
-  def decoder[F[_]]: Pipe[F, Byte, ServerSentEvent] = {
+  def decoder: Pipe[IO, Byte, ServerSentEvent] = {
     def go(
         dataBuffer: StringBuilder,
         eventType: Option[String],
         id: Option[EventId],
         retry: Option[Long],
-        stream: Stream[F, String]): Pull[F, ServerSentEvent, Unit] = {
-      //      def dispatch(h: Handle[F, String]): Pull[F, ServerSentEvent, Nothing] =
-      def dispatch(stream: Stream[F, String]): Pull[F, ServerSentEvent, Unit] =
+        stream: Stream[IO, String]): Pull[IO, ServerSentEvent, Unit] = {
+      //      def dispatch(h: Handle[F, String]): Pull[IO, ServerSentEvent, Nothing] =
+      def dispatch(stream: Stream[IO, String]): Pull[IO, ServerSentEvent, Unit] =
         dataBuffer.toString match {
           case "" =>
             // We just proved dataBuffer is empty, so we can reuse it
@@ -64,7 +65,7 @@ object ServerSentEvent {
       def handleLine(
           field: String,
           value: String,
-          stream: Stream[F, String]): Pull[F, ServerSentEvent, Unit] =
+          stream: Stream[IO, String]): Pull[IO, ServerSentEvent, Unit] =
         field match {
           case "event" =>
             go(dataBuffer, Some(value), id, retry, stream)
@@ -101,6 +102,6 @@ object ServerSentEvent {
       go(new StringBuilder, None, None, None, stream.through(utf8Decode.andThen(text.lines))).stream
   }
 
-  def encoder[F[_]]: Pipe[F, ServerSentEvent, Byte] =
+  def encoder: Pipe[IO, ServerSentEvent, Byte] =
     _.map(_.renderString).through(utf8Encode)
 }

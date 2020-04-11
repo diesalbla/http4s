@@ -9,10 +9,10 @@ import org.http4s.server.middleware.PushSupport._
 object MockRoute {
   def route(): HttpRoutes[IO] = HttpRoutes.of {
     case req if req.uri.path === "/ping" =>
-      Response[IO](Ok).withEntity("pong").pure[IO]
+      Response(Ok).withEntity("pong").pure[IO]
 
     case req if req.method === Method.POST && req.uri.path === "/echo" =>
-      IO.pure(Response[IO](body = req.body))
+      IO.pure(Response(body = req.body))
 
     case req if req.uri.path === "/withslash" =>
       IO.pure(Response(Ok))
@@ -25,6 +25,6 @@ object MockRoute {
 
     /** For testing the PushSupport middleware */
     case req if req.uri.path === "/push" =>
-      Response[IO](Ok).withEntity("Hello").push("/ping")(req).pure[IO]
+      Response(Ok).withEntity("Hello").push("/ping")(req).pure[IO]
   }
 }

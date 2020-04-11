@@ -18,7 +18,7 @@ trait MessageFailure extends RuntimeException {
   final override def getCause: Throwable = cause.orNull
 
   /** Provides a default rendering of this failure as a [[Response]]. */
-  def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F]
+  def toHttpResponse(httpVersion: HttpVersion): Response
 }
 
 /**
@@ -39,9 +39,9 @@ final case class ParseFailure(sanitized: String, details: String)
 
   def cause: Option[Throwable] = None
 
-  def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F] =
+  def toHttpResponse(httpVersion: HttpVersion): Response =
     Response(Status.BadRequest, httpVersion)
-      .withEntity(sanitized)(EntityEncoder.stringEncoder[F])
+      .withEntity(sanitized)(EntityEncoder.stringEncoder)
 }
 
 object ParseFailure {
@@ -82,9 +82,9 @@ final case class MalformedMessageBodyFailure(details: String, cause: Option[Thro
   def message: String =
     s"Malformed message body: $details"
 
-  def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F] =
+  def toHttpResponse(httpVersion: HttpVersion): Response =
     Response(Status.BadRequest, httpVersion)
-      .withEntity(s"The request body was malformed.")(EntityEncoder.stringEncoder[F])
+      .withEntity(s"The request body was malformed.")(EntityEncoder.stringEncoder)
 }
 
 /** Indicates a semantic error decoding the body of an HTTP [[Message]]. */
@@ -93,9 +93,9 @@ final case class InvalidMessageBodyFailure(details: String, cause: Option[Throwa
   def message: String =
     s"Invalid message body: $details"
 
-  def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F] =
+  def toHttpResponse(httpVersion: HttpVersion): Response =
     Response(Status.UnprocessableEntity, httpVersion)
-      .withEntity(s"The request body was invalid.")(EntityEncoder.stringEncoder[F])
+      .withEntity(s"The request body was invalid.")(EntityEncoder.stringEncoder)
 }
 
 /** Indicates that a [[Message]] came with no supported [[MediaType]]. */
@@ -108,9 +108,9 @@ sealed abstract class UnsupportedMediaTypeFailure extends DecodeFailure with NoS
     s"Expected one of the following media ranges: ${expected.map(_.show).mkString(", ")}"
   protected def responseMsg: String = s"$sanitizedResponsePrefix. $expectedMsg"
 
-  def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F] =
+  def toHttpResponse(httpVersion: HttpVersion): Response =
     Response(Status.UnsupportedMediaType, httpVersion)
-      .withEntity(responseMsg)(EntityEncoder.stringEncoder[F])
+      .withEntity(responseMsg)(EntityEncoder.stringEncoder)
 }
 
 /** Indicates that a [[Message]] attempting to be decoded has no [[MediaType]] and no

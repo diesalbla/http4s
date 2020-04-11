@@ -1,21 +1,20 @@
 package org.http4s.internal
 
-import cats.effect.{Bracket, Resource}
+import cats.effect.{Resource, IO}
 import fs2.Stream
 
-private[http4s] trait BackendBuilder[F[_], A] {
-  protected implicit def F: Bracket[F, Throwable]
+private[http4s] trait BackendBuilder[A] {
 
   /** Returns the backend as a resource.  Resource acquire waits
     * until the backend is ready to process requests.
     */
-  def resource: Resource[F, A]
+  def resource: Resource[IO, A]
 
   /** Returns the backend as a single-element stream.  The stream
     * does not emit until the backend is ready to process requests.
     * The backend is shut down when the stream is finalized.
     */
-  def stream: Stream[F, A] = Stream.resource(resource)
+  def stream: Stream[IO, A] = Stream.resource(resource)
 
   /** Returns an effect that allocates a backend and an `F[Unit]` to
     * release it.  The returned `F` waits until the backend is ready
@@ -28,5 +27,5 @@ private[http4s] trait BackendBuilder[F[_], A] {
     * [[cats.effect.Resource]] or [[fs2.Stream]] is not tenable.
     * [[resource]] or [[stream]] is recommended wherever possible.
     */
-  def allocated: F[(A, F[Unit])] = resource.allocated
+  def allocated: IO[(A, IO[Unit])] = resource.allocated
 }

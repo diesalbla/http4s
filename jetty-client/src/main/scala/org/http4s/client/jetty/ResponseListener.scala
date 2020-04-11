@@ -19,7 +19,7 @@ import org.log4s.getLogger
 
 private[jetty] final case class ResponseListener[F[_]](
     queue: Queue[F, Item],
-    cb: Callback[Resource[F, Response[F]]])(implicit F: ConcurrentEffect[F])
+    cb: Callback[Resource[F, Response]])(implicit F: ConcurrentEffect[F])
     extends JettyResponse.Listener.Adapter {
   import ResponseListener.logger
 
@@ -31,7 +31,7 @@ private[jetty] final case class ResponseListener[F[_]](
       .fromInt(response.getStatus)
       .map { s =>
         responseSent = true
-        Resource.pure[F, Response[F]](Response(
+        Resource.pure[F, Response](Response(
           status = s,
           httpVersion = getHttpVersion(response.getVersion),
           headers = getHeaders(response.getHeaders),
@@ -111,7 +111,7 @@ private[jetty] object ResponseListener {
 
   private val logger = getLogger
 
-  def apply[F[_]](cb: Callback[Resource[F, Response[F]]])(
+  def apply[F[_]](cb: Callback[Resource[F, Response]])(
       implicit F: ConcurrentEffect[F]): F[ResponseListener[F]] =
     Queue
       .synchronous[F, Item]

@@ -5,7 +5,7 @@ title: The http4s DSL
 ---
 
 Recall from earlier that an `HttpRoutes[F]` is just a type alias for
-`Kleisli[OptionT[F, *], Request[F], Response[F]]`.  This provides a minimal
+`Kleisli[OptionT[F, *], Request, Response]`.  This provides a minimal
 foundation for declaring services and executing them on blaze or a
 servlet container.  While this foundation is composable, it is not
 highly productive.  Most service authors will seek a higher level DSL.
@@ -45,12 +45,12 @@ implicit val timer : Timer[IO] = IO.timer(scala.concurrent.ExecutionContext.glob
 The central concept of http4s-dsl is pattern matching.  An
 `HttpRoutes[F]` is declared as a simple series of case statements.  Each
 case statement attempts to match and optionally extract from an
-incoming `Request[F]`.  The code associated with the first matching case
-is used to generate a `F[Response[F]]`.
+incoming `Request`.  The code associated with the first matching case
+is used to generate a `F[Response]`.
 
 The simplest case statement matches all requests without extracting
 anything.  The right hand side of the request must return a
-`F[Response[F]]`.
+`F[Response]`.
 
 In the following we use `cats.effect.IO` as the effect type `F`.
 
@@ -68,13 +68,13 @@ need a server to test our route.  We can construct our own request
 and experiment directly in the REPL.
 
 ```tut
-val getRoot = Request[IO](Method.GET, uri"/")
+val getRoot = Request(Method.GET, uri"/")
 
 val io = service.orNotFound.run(getRoot)
 ```
 
-Where is our `Response[F]`?  It hasn't been created yet.  We wrapped it
-in an `IO`.  In a real service, generating a `Response[F]` is likely to
+Where is our `Response`?  It hasn't been created yet.  We wrapped it
+in an `IO`.  In a real service, generating a `Response` is likely to
 be an asynchronous operation with side effects, such as invoking
 another web service or querying a database, or maybe both.  Operating
 in a `F` gives us control over the sequencing of operations and
@@ -185,9 +185,9 @@ Ok("Ok response.").map(_.removeCookie("foo")).unsafeRunSync.headers
 
 #### Simple bodies
 
-Most status codes take an argument as a body.  In http4s, `Request[F]`
-and `Response[F]` bodies are represented as a
-`fs2.Stream[F, Byte]`.  It's also considered good
+Most status codes take an argument as a body.  In http4s, `Request`
+and `Response` bodies are represented as a
+`fs2.Stream[IO, Byte]`.  It's also considered good
 HTTP manners to provide a `Content-Type` and, where known in advance,
 `Content-Length` header in one's responses.
 
@@ -285,7 +285,7 @@ val dripOutIO = drip.through(fs2.text.lines).through(_.evalMap(s => {IO{println(
 dripOutIO.unsafeRunSync
 ```
 
-When wrapped in a `Response[F]`, http4s will flush each chunk of a
+When wrapped in a `Response`, http4s will flush each chunk of a
 `Stream` as they are emitted.  Note that a stream's length can't
 generally be anticipated before it runs, so this triggers chunked
 transfer encoding:

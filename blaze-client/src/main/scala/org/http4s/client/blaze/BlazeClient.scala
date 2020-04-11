@@ -81,7 +81,7 @@ object BlazeClient {
             case (stageOpt, _) => F.delay(stageOpt.foreach(_.removeStage()))
           }
 
-        def loop: F[Resource[F, Response[F]]] =
+        def loop: F[Resource[F, Response]] =
           borrow.use { next =>
             idleTimeoutStage(next.connection).use { stageOpt =>
               val idleTimeoutF = stageOpt match {
@@ -131,7 +131,7 @@ object BlazeClient {
                           })(stage => F.delay(stage.removeStage()))
 
                     F.racePair(gate.get *> res, responseHeaderTimeoutF)
-                      .flatMap[Resource[F, Response[F]]] {
+                      .flatMap[Resource[F, Response]] {
                         case Left((r, fiber)) => fiber.cancel.as(r)
                         case Right((fiber, t)) => fiber.cancel >> F.raiseError(t)
                       }
@@ -155,7 +155,7 @@ object BlazeClient {
                   F.delay(c.cancel)
                 }
               )
-              .flatMap[Resource[F, Response[F]]] {
+              .flatMap[Resource[F, Response]] {
                 case Left((r, fiber)) => fiber.cancel.as(r)
                 case Right((fiber, t)) => fiber.cancel >> F.raiseError(t)
               }

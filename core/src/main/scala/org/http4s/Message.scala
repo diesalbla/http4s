@@ -1,10 +1,9 @@
 package org.http4s
 
-import cats.{Applicative, Functor, Monad, ~>}
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.effect.IO
-import fs2.{Pure, Stream}
+import fs2.{Stream}
 import fs2.text.utf8Encode
 import java.io.File
 import java.net.{InetAddress, InetSocketAddress}
@@ -19,21 +18,20 @@ import scala.util.hashing.MurmurHash3
 /**
   * Represents a HTTP Message. The interesting subclasses are Request and Response.
   */
-sealed trait Message[F[_]] extends Media[F] { self =>
-  type SelfF[F2[_]] <: Message[F2] { type SelfF[F3[_]] = self.SelfF[F3] }
-  type Self = SelfF[F]
+sealed trait Message extends Media { self =>
+  type Self <: Message { type Self = self.Self }
 
   def httpVersion: HttpVersion
 
   def headers: Headers
 
-  def body: EntityBody[F]
+  def body: EntityBody
 
   def attributes: Vault
 
   protected def change(
       httpVersion: HttpVersion = httpVersion,
-      body: EntityBody[F] = body,
+      body: EntityBody = body,
       headers: Headers = headers,
       attributes: Vault = attributes): Self
 
@@ -49,12 +47,6 @@ sealed trait Message[F[_]] extends Media[F] { self =>
   def withAttributes(attributes: Vault): Self =
     change(attributes = attributes)
 
-  // Body methods
-
-  @deprecated("Use withEntity", "0.19")
-  def withBody[T](b: T)(implicit F: Applicative[F], w: EntityEncoder[F, T]): F[Self] =
-    F.pure(withEntity(b))
-
   /** Replace the body of this message with a new body
     *
     * @param b body to attach to this method
@@ -62,7 +54,7 @@ sealed trait Message[F[_]] extends Media[F] { self =>
     * @tparam T type of the Body
     * @return a new message with the new body
     */
-  def withEntity[T](b: T)(implicit w: EntityEncoder[F, T]): Self = {
+  def withEntity[T](b: T)(implicit w: EntityEncoder[T]): Self = {
     val entity = w.toEntity(b)
     val hs = entity.length match {
       case Some(l) =>
@@ -81,7 +73,7 @@ sealed trait Message[F[_]] extends Media[F] { self =>
     * or `Content-Length`. Most use cases are better served by [[withEntity]],
     * which uses an [[EntityEncoder]] to maintain the headers.
     */
-  def withBodyStream(body: EntityBody[F]): Self =
+  def withBodyStream(body: EntityBody): Self =
     change(body = body)
 
   /** Set an empty entity body on this message, and remove all payload headers
@@ -112,34 +104,20 @@ sealed trait Message[F[_]] extends Media[F] { self =>
   def putHeaders(headers: Header*): Self =
     transformHeaders(_.put(headers: _*))
 
-  /** Replace the existing headers with those provided */
-  @deprecated("Use withHeaders instead", "0.20.0-M2")
-  def replaceAllHeaders(headers: Headers): Self =
-    withHeaders(headers)
-
-  /** Replace the existing headers with those provided */
-  @deprecated("Use withHeaders instead", "0.20.0-M2")
-  def replaceAllHeaders(headers: Header*): Self =
-    withHeaders(headers: _*)
-
-  def withTrailerHeaders(trailerHeaders: F[Headers]): Self =
-    withAttribute(Message.Keys.TrailerHeaders[F], trailerHeaders)
+  def withTrailerHeaders(trailerHeaders: IO[Headers]): Self =
+    withAttribute(Message.Keys.TrailerHeaders, trailerHeaders)
 
   def withoutTrailerHeaders: Self =
-    withoutAttribute(Message.Keys.TrailerHeaders[F])
+    withoutAttribute(Message.Keys.TrailerHeaders)
 
   /**
     * The trailer headers, as specified in Section 3.6.1 of RFC 2616. The resulting
     * F might not complete until the entire body has been consumed.
     */
-  def trailerHeaders(implicit F: Applicative[F]): F[Headers] =
-    attributes.lookup(Message.Keys.TrailerHeaders[F]).getOrElse(F.pure(Headers.empty))
+  def trailerHeaders: IO[Headers] =
+    attributes.lookup(Message.Keys.TrailerHeaders).getOrElse(IO.pure(Headers.empty))
 
   // Specific header methods
-
-  @deprecated("Use withContentType(`Content-Type`(t)) instead", "0.20.0-M2")
-  def withType(t: MediaType)(implicit F: Functor[F]): Self =
-    withContentType(`Content-Type`(t))
 
   def withContentType(contentType: `Content-Type`): Self =
     putHeaders(contentType)
@@ -174,17 +152,13 @@ sealed trait Message[F[_]] extends Media[F] { self =>
   def withoutAttribute(key: Key[_]): Self =
     change(attributes = attributes.delete(key))
 
-  /**
-    * Lifts this Message's body to the specified effect type.
-    */
-  override def covary[F2[x] >: F[x]]: SelfF[F2] = this.asInstanceOf[SelfF[F2]]
 }
 
 object Message {
   private[http4s] val logger = getLogger
   object Keys {
     private[this] val trailerHeaders: Key[Any] = Key.newKey[IO, Any].unsafeRunSync
-    def TrailerHeaders[F[_]]: Key[F[Headers]] = trailerHeaders.asInstanceOf[Key[F[Headers]]]
+    def TrailerHeaders: Key[IO[Headers]] = trailerHeaders.asInstanceOf[Key[IO[Headers]]]
   }
 }
 
@@ -197,47 +171,37 @@ object Message {
   * @param uri representation of the request URI
   * @param httpVersion the HTTP version
   * @param headers collection of [[Header]]s
-  * @param body fs2.Stream[F, Byte] defining the body of the request
+  * @param body fs2.Stream[IO, Byte] defining the body of the request
   * @param attributes Immutable Map used for carrying additional information in a type safe fashion
   */
-final class Request[F[_]](
+final class Request(
     val method: Method = Method.GET,
     val uri: Uri = Uri(path = "/"),
     val httpVersion: HttpVersion = HttpVersion.`HTTP/1.1`,
     val headers: Headers = Headers.empty,
-    val body: EntityBody[F] = EmptyBody,
+    val body: EntityBody = EmptyBody,
     val attributes: Vault = Vault.empty
-) extends Message[F]
+) extends Message
     with Product
     with Serializable {
   import Request._
 
-  type SelfF[F0[_]] = Request[F0]
+  type Self = Request
 
   private def copy(
       method: Method = this.method,
       uri: Uri = this.uri,
       httpVersion: HttpVersion = this.httpVersion,
       headers: Headers = this.headers,
-      body: EntityBody[F] = this.body,
+      body: EntityBody = this.body,
       attributes: Vault = this.attributes
-  ): Request[F] =
+  ): Request =
     Request(
       method = method,
       uri = uri,
       httpVersion = httpVersion,
       headers = headers,
       body = body,
-      attributes = attributes
-    )
-
-  def mapK[G[_]](f: F ~> G): Request[G] =
-    Request[G](
-      method = method,
-      uri = uri,
-      httpVersion = httpVersion,
-      headers = headers,
-      body = body.translate(f),
       attributes = attributes
     )
 
@@ -249,7 +213,7 @@ final class Request[F[_]](
 
   override protected def change(
       httpVersion: HttpVersion,
-      body: EntityBody[F],
+      body: EntityBody,
       headers: Headers,
       attributes: Vault
   ): Self =
@@ -400,20 +364,17 @@ final class Request[F[_]](
   def serverSoftware: ServerSoftware =
     attributes.lookup(Keys.ServerSoftware).getOrElse(ServerSoftware.Unknown)
 
-  def decodeWith[A](decoder: EntityDecoder[F, A], strict: Boolean)(f: A => F[Response[F]])(
-      implicit F: Monad[F]): F[Response[F]] =
+  def decodeWith[A](decoder: EntityDecoder[A], strict: Boolean)(f: A => IO[Response]): IO[Response] =
     decoder
       .decode(this, strict = strict)
-      .fold(_.toHttpResponse[F](httpVersion).pure[F], f)
-      .flatten
+      .flatMap(_.fold(_.toHttpResponse(httpVersion).pure[IO], f))
 
   /** Helper method for decoding [[Request]]s
     *
     * Attempt to decode the [[Request]] and, if successful, execute the continuation to get a [[Response]].
     * If decoding fails, an `UnprocessableEntity` [[Response]] is generated.
     */
-  def decode[A](
-      f: A => F[Response[F]])(implicit F: Monad[F], decoder: EntityDecoder[F, A]): F[Response[F]] =
+  def decode[A](f: A => IO[Response])(implicit decoder: EntityDecoder[A]): IO[Response] =
     decodeWith(decoder, strict = false)(f)
 
   /** Helper method for decoding [[Request]]s
@@ -422,15 +383,14 @@ final class Request[F[_]](
     * If decoding fails, an `UnprocessableEntity` [[Response]] is generated. If the decoder does not support the
     * [[MediaType]] of the [[Request]], a `UnsupportedMediaType` [[Response]] is generated instead.
     */
-  def decodeStrict[A](
-      f: A => F[Response[F]])(implicit F: Monad[F], decoder: EntityDecoder[F, A]): F[Response[F]] =
+  def decodeStrict[A](f: A => IO[Response])(decoder: EntityDecoder[A]): IO[Response] =
     decodeWith(decoder, strict = true)(f)
 
   override def hashCode(): Int = MurmurHash3.productHash(this)
 
   override def equals(that: Any): Boolean =
     (this eq that.asInstanceOf[Object]) || (that match {
-      case that: Request[_] =>
+      case that: Request =>
         (this.method == that.method) &&
           (this.uri == that.uri) &&
           (this.httpVersion == that.httpVersion) &&
@@ -440,7 +400,7 @@ final class Request[F[_]](
       case _ => false
     })
 
-  def canEqual(that: Any): Boolean = that.isInstanceOf[Request[F]]
+  def canEqual(that: Any): Boolean = that.isInstanceOf[Request]
 
   def productArity: Int = 6
 
@@ -459,15 +419,15 @@ final class Request[F[_]](
 }
 
 object Request {
-  def apply[F[_]](
+  def apply(
       method: Method = Method.GET,
       uri: Uri = Uri(path = "/"),
       httpVersion: HttpVersion = HttpVersion.`HTTP/1.1`,
       headers: Headers = Headers.empty,
-      body: EntityBody[F] = EmptyBody,
+      body: EntityBody = EmptyBody,
       attributes: Vault = Vault.empty
-  ): Request[F] =
-    new Request[F](
+  ): Request =
+    new Request(
       method = method,
       uri = uri,
       httpVersion = httpVersion,
@@ -476,10 +436,9 @@ object Request {
       attributes = attributes
     )
 
-  def unapply[F[_]](
-      message: Message[F]): Option[(Method, Uri, HttpVersion, Headers, EntityBody[F], Vault)] =
+  def unapply(message: Message): Option[(Method, Uri, HttpVersion, Headers, EntityBody, Vault)] =
     message match {
-      case request: Request[F] =>
+      case request: Request =>
         Some(
           (
             request.method,
@@ -505,33 +464,25 @@ object Request {
   *
   * @param status [[Status]] code and message
   * @param headers [[Headers]] containing all response headers
-  * @param body EntityBody[F] representing the possible body of the response
+  * @param body EntityBody representing the possible body of the response
   * @param attributes [[Vault]] containing additional parameters which may be used by the http4s
   *                   backend for additional processing such as java.io.File object
   */
-final case class Response[F[_]](
+final case class Response(
     status: Status = Status.Ok,
     httpVersion: HttpVersion = HttpVersion.`HTTP/1.1`,
     headers: Headers = Headers.empty,
-    body: EntityBody[F] = EmptyBody,
+    body: EntityBody = EmptyBody,
     attributes: Vault = Vault.empty)
-    extends Message[F] {
-  type SelfF[F0[_]] = Response[F0]
-
-  def mapK[G[_]](f: F ~> G): Response[G] = Response[G](
-    status = status,
-    httpVersion = httpVersion,
-    headers = headers,
-    body = body.translate(f),
-    attributes = attributes
-  )
+    extends Message {
+  type Self = Response
 
   def withStatus(status: Status): Self =
     copy(status = status)
 
   override protected def change(
       httpVersion: HttpVersion,
-      body: EntityBody[F],
+      body: EntityBody,
       headers: Headers,
       attributes: Vault
   ): Self =
@@ -569,18 +520,17 @@ final case class Response[F[_]](
 }
 
 object Response {
-  private[this] val pureNotFound: Response[Pure] =
+  private[this] val pureNotFound: Response =
     Response(
       Status.NotFound,
       body = Stream("Not found").through(utf8Encode),
       headers = Headers(`Content-Type`(MediaType.text.plain, Charset.`UTF-8`) :: Nil))
 
-  def notFound[F[_]]: Response[F] = pureNotFound.copy(body = pureNotFound.body.covary[F])
+  def notFound: Response = pureNotFound.copy(body = pureNotFound.body.covary[IO])
 
-  def notFoundFor[F[_]: Applicative](request: Request[F])(
-      implicit encoder: EntityEncoder[F, String]): F[Response[F]] =
-    Response[F](Status.NotFound).withEntity(s"${request.pathInfo} not found").pure[F]
+  def notFoundFor(request: Request)(implicit encoder: EntityEncoder[String]): IO[Response] =
+    IO.pure(Response(Status.NotFound).withEntity(s"${request.pathInfo} not found"))
 
-  def timeout[F[_]]: Response[F] =
-    Response[F](Status.ServiceUnavailable).withEntity("Response timed out")
+  def timeout: Response =
+    Response(Status.ServiceUnavailable).withEntity("Response timed out")
 }

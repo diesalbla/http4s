@@ -11,7 +11,7 @@ import org.http4s.Method.GET
 import scala.concurrent.duration.TimeUnit
 
 object util {
-  def stub: PartialFunction[Request[IO], IO[Response[IO]]] = {
+  def stub: PartialFunction[Request, IO[Response]] = {
     case (GET | POST | PUT | DELETE) -> Root / "ok" =>
       Ok("200 OK")
     case GET -> Root / "bad-request" =>
@@ -19,9 +19,9 @@ object util {
     case GET -> Root / "internal-server-error" =>
       InternalServerError("500 Internal Server Error")
     case GET -> Root / "error" =>
-      IO.raiseError[Response[IO]](new IOException("error"))
+      IO.raiseError[Response](new IOException("error"))
     case GET -> Root / "timeout" =>
-      IO.raiseError[Response[IO]](new TimeoutException("request timed out"))
+      IO.raiseError[Response](new TimeoutException("request timed out"))
     case GET -> Root / "abnormal-termination" =>
       Ok("200 OK").map(
         _.withBodyStream(Stream.raiseError[IO](new RuntimeException("Abnormal termination"))))

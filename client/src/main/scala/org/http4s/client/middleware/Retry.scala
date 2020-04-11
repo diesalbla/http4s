@@ -20,8 +20,8 @@ object Retry {
       policy: RetryPolicy[F],
       redactHeaderWhen: CaseInsensitiveString => Boolean = Headers.SensitiveHeaders.contains)(
       client: Client[F])(implicit F: Concurrent[F], T: Timer[F]): Client[F] = {
-    def prepareLoop(req: Request[F], attempts: Int): Resource[F, Response[F]] =
-      Resource.suspend[F, Response[F]](F.continual(client.run(req).allocated) {
+    def prepareLoop(req: Request, attempts: Int): Resource[F, Response] =
+      Resource.suspend[F, Response](F.continual(client.run(req).allocated) {
         case Right((response, dispose)) =>
           policy(req, Right(response), attempts) match {
             case Some(duration) =>
@@ -48,7 +48,7 @@ object Retry {
           }
       })
 
-    def showRequest(request: Request[F], redactWhen: CaseInsensitiveString => Boolean): String = {
+    def showRequest(request: Request, redactWhen: CaseInsensitiveString => Boolean): String = {
       val headers = request.headers.redactSensitive(redactWhen).toList.mkString(",")
       val uri = request.uri.renderString
       val method = request.method
@@ -56,10 +56,10 @@ object Retry {
     }
 
     def nextAttempt(
-        req: Request[F],
+        req: Request,
         attempts: Int,
         duration: FiniteDuration,
-        retryHeader: Option[`Retry-After`]): Resource[F, Response[F]] = {
+        retryHeader: Option[`Retry-After`]): Resource[F, Response] = {
       val headerDuration =
         retryHeader
           .map { h =>
@@ -93,7 +93,7 @@ object RetryPolicy {
     */
   def apply[F[_]](
       backoff: Int => Option[FiniteDuration],
-      retriable: (Request[F], Either[Throwable, Response[F]]) => Boolean = defaultRetriable[F] _
+      retriable: (Request, Either[Throwable, Response]) => Boolean = defaultRetriable[F] _
   ): RetryPolicy[F] = { (req, result, retries) =>
     if (retriable(req, result)) backoff(retries)
     else None
@@ -116,11 +116,11 @@ object RetryPolicy {
     * run twice.  The most common symptom of this will be resubmitting
     * an idempotent request.
     */
-  def defaultRetriable[F[_]](req: Request[F], result: Either[Throwable, Response[F]]): Boolean =
+  def defaultRetriable[F[_]](req: Request, result: Either[Throwable, Response]): Boolean =
     req.method.isIdempotent && isErrorOrRetriableStatus(result)
 
   @deprecated("Use defaultRetriable instead", "0.19.0")
-  def unsafeRetriable[F[_]](req: Request[F], result: Either[Throwable, Response[F]]): Boolean =
+  def unsafeRetriable[F[_]](req: Request, result: Either[Throwable, Response]): Boolean =
     defaultRetriable(req, result)
 
   /** Like [[defaultRetriable]], but returns true even if the request method
@@ -132,10 +132,10 @@ object RetryPolicy {
     * run twice.  The most common symptom of this will be resubmitting
     * an empty request body.
     */
-  def recklesslyRetriable[F[_]](result: Either[Throwable, Response[F]]): Boolean =
+  def recklesslyRetriable[F[_]](result: Either[Throwable, Response]): Boolean =
     isErrorOrRetriableStatus(result)
 
-  private def isErrorOrRetriableStatus[F[_]](result: Either[Throwable, Response[F]]): Boolean =
+  private def isErrorOrRetriableStatus[F[_]](result: Either[Throwable, Response]): Boolean =
     result match {
       case Right(resp) => RetriableStatuses(resp.status)
       case Left(WaitQueueTimeoutException) => false

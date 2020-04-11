@@ -19,9 +19,9 @@ class ParsingSpec(implicit ee: ExecutionEnv) extends Specification {
     def httpifyString(s: String): String = s.replace("\n", "\r\n")
 
     // Only for Use with Text Requests
-    def parseRequestRig[F[_]: Sync](s: String): F[Request[F]] = {
+    def parseRequestRig[F[_]: Sync](s: String): F[Request] = {
       val logger = TestingLogger.impl[F]()
-      val byteStream: Stream[F, Byte] = Stream
+      val byteStream: Stream[IO, Byte] = Stream
         .emit(s)
         .covary[F]
         .map(httpifyString)
@@ -30,9 +30,9 @@ class ParsingSpec(implicit ee: ExecutionEnv) extends Specification {
       Parser.Request.parser[F](Int.MaxValue)(byteStream)(logger)
     }
 
-    def parseResponseRig[F[_]: Sync](s: String): Resource[F, Response[F]] = {
+    def parseResponseRig[F[_]: Sync](s: String): Resource[F, Response] = {
       val logger = TestingLogger.impl[F]()
-      val byteStream: Stream[F, Byte] = Stream
+      val byteStream: Stream[IO, Byte] = Stream
         .emit(s)
         .covary[F]
         .map(httpifyString)
@@ -41,7 +41,7 @@ class ParsingSpec(implicit ee: ExecutionEnv) extends Specification {
       Parser.Response.parser[F](Int.MaxValue)(byteStream)(logger)
     }
 
-    def forceScopedParsing[F[_]: Sync](s: String): Stream[F, Byte] = {
+    def forceScopedParsing[F[_]: Sync](s: String): Stream[IO, Byte] = {
       val pivotPoint = s.trim().length - 1
       val firstChunk = s.substring(0, pivotPoint).replace("\n", "\r\n")
       val secondChunk = s.substring(pivotPoint, s.length).replace("\n", "\r\n")
@@ -51,7 +51,7 @@ class ParsingSpec(implicit ee: ExecutionEnv) extends Specification {
       case object SecondChunk extends StreamState
       case object Completed extends StreamState
 
-      def unfoldStream(closed: Ref[F, Boolean]): Stream[F, Byte] = {
+      def unfoldStream(closed: Ref[F, Boolean]): Stream[IO, Byte] = {
         val scope = Resource(((), closed.set(true)).pure[F])
         val noneChunk = OptionT.none[F, (Chunk[Byte], StreamState)].value
 
@@ -79,7 +79,7 @@ class ParsingSpec(implicit ee: ExecutionEnv) extends Specification {
       |Host: www.google.com
       |
       |""".stripMargin
-      val expected = Request[IO](Method.GET, Uri.unsafeFromString("www.google.com"))
+      val expected = Request(Method.GET, Uri.unsafeFromString("www.google.com"))
 
       val result = Helpers.parseRequestRig[IO](raw).unsafeRunSync
 
@@ -100,7 +100,7 @@ class ParsingSpec(implicit ee: ExecutionEnv) extends Specification {
       |Content-Length: 11
       |
       |Entity Here""".stripMargin
-      val expected = Request[IO](Method.POST, Uri.unsafeFromString("/foo"))
+      val expected = Request(Method.POST, Uri.unsafeFromString("/foo"))
         .withEntity("Entity Here")
 
       val result = Helpers.parseRequestRig[IO](raw).unsafeRunSync

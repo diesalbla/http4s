@@ -28,7 +28,7 @@ object ResponseLogger {
       client.run(req).flatMap { response =>
         if (!logBody)
           Resource.liftF(
-            Logger.logMessage[F, Response[F]](response)(logHeaders, logBody, redactHeadersWhen)(
+            Logger.logMessage[F, Response](response)(logHeaders, logBody, redactHeadersWhen)(
               log(_)) *> F.delay(response))
         else
           Resource.suspend {
@@ -45,7 +45,7 @@ object ResponseLogger {
                   .flatMap(c => Stream.chunk(c).covary[F])
 
                 Logger
-                  .logMessage[F, Response[F]](response.withBodyStream(newBody))(
+                  .logMessage[F, Response](response.withBodyStream(newBody))(
                     logHeaders,
                     logBody,
                     redactHeadersWhen)(log(_))

@@ -28,8 +28,8 @@ private[blaze] final class Http1ServerParser[F[_]](
   def doParseContent(buff: ByteBuffer): Option[ByteBuffer] = Option(parseContent(buff))
 
   def collectMessage(
-      body: EntityBody[F],
-      attrs: Vault): Either[(ParseFailure, HttpVersion), Request[F]] = {
+      body: EntityBody,
+      attrs: Vault): Either[(ParseFailure, HttpVersion), Request] = {
     val h = Headers(headers.result())
     headers.clear()
     val protocol = if (minorVersion() == 1) HttpVersion.`HTTP/1.1` else HttpVersion.`HTTP/1.0`

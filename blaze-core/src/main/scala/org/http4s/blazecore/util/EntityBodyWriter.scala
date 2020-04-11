@@ -48,7 +48,7 @@ private[http4s] trait EntityBodyWriter[F[_]] {
     * @param p EntityBody to write out
     * @return the Task which when run will unwind the Process
     */
-  def writeEntityBody(p: EntityBody[F]): F[Boolean] = {
+  def writeEntityBody(p: EntityBody): F[Boolean] = {
     val writeBody: F[Unit] = p.through(writePipe).compile.drain
     val writeBodyEnd: F[Boolean] = fromFuture(F.delay(writeEnd(Chunk.empty)))
     writeBody *> writeBodyEnd
@@ -60,9 +60,9 @@ private[http4s] trait EntityBodyWriter[F[_]] {
     * exception flush and then the stream fails.
     */
   private def writePipe: Pipe[F, Byte, Unit] = { s =>
-    val writeStream: Stream[F, Unit] =
+    val writeStream: Stream[IO, Unit] =
       s.chunks.evalMap(chunk => fromFuture(F.delay(writeBodyChunk(chunk, flush = false))))
-    val errorStream: Throwable => Stream[F, Unit] = e =>
+    val errorStream: Throwable => Stream[IO, Unit] = e =>
       Stream.eval(fromFuture(F.delay(exceptionFlush()))).flatMap(_ => Stream.raiseError[F](e))
     writeStream.handleErrorWith(errorStream)
   }

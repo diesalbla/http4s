@@ -19,7 +19,7 @@ class Http1ClientStageSpec extends Http4sSpec {
   val trampoline = org.http4s.blaze.util.Execution.trampoline
 
   val www_foo_test = Uri.uri("http://www.foo.test")
-  val FooRequest = Request[IO](uri = www_foo_test)
+  val FooRequest = Request(uri = www_foo_test)
   val FooRequestKey = RequestKey.fromRequest(FooRequest)
 
   val LongDuration = 30.seconds
@@ -42,8 +42,8 @@ class Http1ClientStageSpec extends Http4sSpec {
   private def mkBuffer(s: String): ByteBuffer =
     ByteBuffer.wrap(s.getBytes(StandardCharsets.ISO_8859_1))
 
-  private def bracketResponse[T](req: Request[IO], resp: String)(
-      f: Response[IO] => IO[T]): IO[T] = {
+  private def bracketResponse[T](req: Request, resp: String)(
+      f: Response => IO[T]): IO[T] = {
     val stage = mkConnection(FooRequestKey)
     IO.suspend {
       val h = new SeqTestHead(resp.toSeq.map { chr =>
@@ -62,7 +62,7 @@ class Http1ClientStageSpec extends Http4sSpec {
   }
 
   private def getSubmission(
-      req: Request[IO],
+      req: Request,
       resp: String,
       stage: Http1Connection[IO]): IO[(String, String)] =
     for {
@@ -90,7 +90,7 @@ class Http1ClientStageSpec extends Http4sSpec {
     } yield (request, result)
 
   private def getSubmission(
-      req: Request[IO],
+      req: Request,
       resp: String,
       userAgent: Option[`User-Agent`] = None): IO[(String, String)] = {
     val key = RequestKey.fromRequest(req)
@@ -109,7 +109,7 @@ class Http1ClientStageSpec extends Http4sSpec {
     "Submit a request line with a query" in {
       val uri = "/huh?foo=bar"
       val Right(parsed) = Uri.fromString("http://www.foo.test" + uri)
-      val req = Request[IO](uri = parsed)
+      val req = Request(uri = parsed)
 
       val (request, response) = getSubmission(req, resp).unsafeRunSync()
       val statusline = request.split("\r\n").apply(0)
@@ -236,7 +236,7 @@ class Http1ClientStageSpec extends Http4sSpec {
     "Allow an HTTP/1.0 request without a Host header" in skipOnCi {
       val resp = "HTTP/1.0 200 OK\r\n\r\ndone"
 
-      val req = Request[IO](uri = www_foo_test, httpVersion = HttpVersion.`HTTP/1.0`)
+      val req = Request(uri = www_foo_test, httpVersion = HttpVersion.`HTTP/1.0`)
 
       val (request, response) = getSubmission(req, resp).unsafeRunSync()
 
@@ -245,7 +245,7 @@ class Http1ClientStageSpec extends Http4sSpec {
     }.pendingUntilFixed
 
     "Support flushing the prelude" in {
-      val req = Request[IO](uri = www_foo_test, httpVersion = HttpVersion.`HTTP/1.0`)
+      val req = Request(uri = www_foo_test, httpVersion = HttpVersion.`HTTP/1.0`)
       /*
        * We flush the prelude first to test connection liveness in pooled
        * scenarios before we consume the body.  Make sure we can handle
@@ -288,10 +288,10 @@ class Http1ClientStageSpec extends Http4sSpec {
         "Foo:Bar\r\n" +
         "\r\n"
 
-      val req = Request[IO](uri = www_foo_test, httpVersion = HttpVersion.`HTTP/1.1`)
+      val req = Request(uri = www_foo_test, httpVersion = HttpVersion.`HTTP/1.1`)
 
       "Support trailer headers" in {
-        val hs: IO[Headers] = bracketResponse(req, resp) { (response: Response[IO]) =>
+        val hs: IO[Headers] = bracketResponse(req, resp) { (response: Response) =>
           for {
             _ <- response.as[String]
             hs <- response.trailerHeaders
@@ -302,7 +302,7 @@ class Http1ClientStageSpec extends Http4sSpec {
       }
 
       "Fail to get trailers before they are complete" in {
-        val hs: IO[Headers] = bracketResponse(req, resp) { (response: Response[IO]) =>
+        val hs: IO[Headers] = bracketResponse(req, resp) { (response: Response) =>
           for {
             //body  <- response.as[String]
             hs <- response.trailerHeaders

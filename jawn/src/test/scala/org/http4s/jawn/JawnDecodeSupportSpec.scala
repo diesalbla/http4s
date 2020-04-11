@@ -8,7 +8,7 @@ trait JawnDecodeSupportSpec[J] extends Http4sSpec {
   def testJsonDecoder(decoder: EntityDecoder[IO, J]) =
     "json decoder" should {
       "return right when the entity is valid" in {
-        val resp = Response[IO](Status.Ok).withEntity("""{"valid": true}""")
+        val resp = Response(Status.Ok).withEntity("""{"valid": true}""")
         decoder.decode(resp, strict = false).value.unsafeRunSync must beRight
       }
 
@@ -35,12 +35,12 @@ trait JawnDecodeSupportSpec[J] extends Http4sSpec {
       parseError: PartialFunction[DecodeFailure, MatchResult[Any]]
   ) = {
     "return a ParseFailure when the entity is invalid" in {
-      val resp = Response[IO](Status.Ok).withEntity("""garbage""")
+      val resp = Response(Status.Ok).withEntity("""garbage""")
       decoder.decode(resp, strict = false).value.unsafeRunSync must beLeft.like(parseError)
     }
 
     "return a ParseFailure when the entity is empty" in {
-      val resp = Response[IO](Status.Ok).withEntity("")
+      val resp = Response(Status.Ok).withEntity("")
       decoder.decode(resp, strict = false).value.unsafeRunSync must beLeft.like(emptyBody)
     }
   }

@@ -70,13 +70,13 @@ sealed abstract class OkHttpBuilder[F[_]] private (
   def resource: Resource[F, Client[F]] =
     Resource.make(F.delay(create))(_ => F.unit)
 
-  private def run(req: Request[F]) =
-    Resource.suspend(F.async[Resource[F, Response[F]]] { cb =>
+  private def run(req: Request) =
+    Resource.suspend(F.async[Resource[F, Response]] { cb =>
       okHttpClient.newCall(toOkHttpRequest(req)).enqueue(handler(cb))
       ()
     })
 
-  private def handler(cb: Either[Throwable, Resource[F, Response[F]]] => Unit)(
+  private def handler(cb: Either[Throwable, Resource[F, Response]] => Unit)(
       implicit F: ConcurrentEffect[F],
       cs: ContextShift[F]): Callback =
     new Callback {
@@ -99,10 +99,10 @@ sealed abstract class OkHttpBuilder[F[_]] private (
         }
         val r = status
           .map { s =>
-            Resource[F, Response[F]](
+            Resource[F, Response](
               F.pure(
                 (
-                  Response[F](
+                  Response(
                     status = s,
                     headers = getHeaders(response),
                     httpVersion = protocol,
@@ -125,7 +125,7 @@ sealed abstract class OkHttpBuilder[F[_]] private (
       response.headers().values(v).asScala.map(Header(v, _))
     })
 
-  private def toOkHttpRequest(req: Request[F])(implicit F: Effect[F]): OKRequest = {
+  private def toOkHttpRequest(req: Request)(implicit F: Effect[F]): OKRequest = {
     val body = req match {
       case _ if req.isChunked || req.contentLength.isDefined =>
         new RequestBody {

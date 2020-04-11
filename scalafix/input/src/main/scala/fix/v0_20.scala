@@ -31,16 +31,16 @@ object Http4s018To020 {
     case _ @ GET -> Root => Ok()
   }
 
-  val requestWithBody: IO[Request[IO]] = Request().withBody("hello")
+  val requestWithBody: IO[Request] = Request().withBody("hello")
   val requestWithBody2 = {
     val nested = {
       implicit def encoder[A]: EntityEncoder[IO, A] = ???
-      Some("world").map(Request[IO]().withBody)
+      Some("world").map(Request().withBody)
     }
     nested
   }
-  def responseWithBody: IO[Response[IO]] = Ok().withBody("world")
-  def responseWithBody2: IO[Response[IO]] = Ok().flatMap(_.withBody("world"))
+  def responseWithBody: IO[Response] = Ok().withBody("world")
+  def responseWithBody2: IO[Response] = Ok().flatMap(_.withBody("world"))
 
   val x = MediaType.`application/atom+xml`
   val y = MediaType.`application/vnd.google-earth.kml+xml`

@@ -42,7 +42,7 @@ class RetrySpec extends Http4sSpec with Tables with Http4sLegacyMatchersIO {
       }
     }
     val retryClient = Retry[IO](policy)(client)
-    val req = Request[IO](method, uri("http://localhost/") / status.code.toString).withEntity(body)
+    val req = Request(method, uri("http://localhost/") / status.code.toString).withEntity(body)
     retryClient
       .fetch(req) { _ =>
         IO.unit
@@ -73,7 +73,7 @@ class RetrySpec extends Http4sSpec with Tables with Http4sLegacyMatchersIO {
     }
 
     def resubmit(method: Method)(
-        retriable: (Request[IO], Either[Throwable, Response[IO]]) => Boolean) =
+        retriable: (Request, Either[Throwable, Response]) => Boolean) =
       Ref[IO]
         .of(false)
         .flatMap { ref =>
@@ -81,7 +81,7 @@ class RetrySpec extends Http4sSpec with Tables with Http4sLegacyMatchersIO {
             case false => ref.update(_ => true) *> IO.pure("")
             case true => IO.pure("OK")
           })
-          val req = Request[IO](method, uri("http://localhost/status-from-body")).withEntity(body)
+          val req = Request(method, uri("http://localhost/status-from-body")).withEntity(body)
           val policy = RetryPolicy[IO]({ (attempts: Int) =>
             if (attempts >= 2) None
             else Some(Duration.Zero)
@@ -120,10 +120,10 @@ class RetrySpec extends Http4sSpec with Tables with Http4sLegacyMatchersIO {
               else None),
             RetryPolicy.defaultRetriable[IO]))(Client[IO](_ =>
           Resource.make(semaphore.tryAcquire.flatMap {
-            case true => Response[IO](Status.InternalServerError).pure[IO]
+            case true => Response(Status.InternalServerError).pure[IO]
             case false => IO.raiseError(new IllegalStateException("Exhausted all connections"))
           })(_ => semaphore.release)))
-        client.status(Request[IO]())
+        client.status(Request())
       } must returnValue(Status.InternalServerError)
     }
   }

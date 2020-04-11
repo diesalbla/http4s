@@ -62,19 +62,19 @@ package object server {
     * An HTTP middleware converts an [[HttpRoutes]] to another.
     */
   type HttpMiddleware[F[_]] =
-    Middleware[OptionT[F, *], Request[F], Response[F], Request[F], Response[F]]
+    Middleware[OptionT[F, *], Request, Response, Request, Response]
 
   /**
     * An HTTP middleware that authenticates users.
     */
   type AuthMiddleware[F[_], T] =
-    Middleware[OptionT[F, *], AuthedRequest[F, T], Response[F], Request[F], Response[F]]
+    Middleware[OptionT[F, *], AuthedRequest[F, T], Response, Request, Response]
 
   /**
     * An HTTP middleware that adds a context.
     */
   type ContextMiddleware[F[_], T] =
-    Middleware[OptionT[F, *], ContextRequest[F, T], Response[F], Request[F], Response[F]]
+    Middleware[OptionT[F, *], ContextRequest[T], Response, Request, Response]
 
   /**
     * Old name for SSLConfig
@@ -84,37 +84,37 @@ package object server {
 
   object AuthMiddleware {
     def apply[F[_]: Monad, T](
-        authUser: Kleisli[OptionT[F, *], Request[F], T]
+        authUser: Kleisli[OptionT[F, *], Request, T]
     ): AuthMiddleware[F, T] =
       noSpider[F, T](authUser, defaultAuthFailure[F])
 
     def withFallThrough[F[_]: Monad, T](
-        authUser: Kleisli[OptionT[F, *], Request[F], T]): AuthMiddleware[F, T] =
-      _.compose(Kleisli((r: Request[F]) => authUser(r).map(AuthedRequest(_, r))))
+        authUser: Kleisli[OptionT[F, *], Request, T]): AuthMiddleware[F, T] =
+      _.compose(Kleisli((r: Request) => authUser(r).map(AuthedRequest(_, r))))
 
     def noSpider[F[_]: Monad, T](
-        authUser: Kleisli[OptionT[F, *], Request[F], T],
-        onAuthFailure: Request[F] => F[Response[F]]
+        authUser: Kleisli[OptionT[F, *], Request, T],
+        onAuthFailure: Request => F[Response]
     ): AuthMiddleware[F, T] = { service =>
-      Kleisli { (r: Request[F]) =>
+      Kleisli { (r: Request) =>
         val resp = authUser(r).value.flatMap {
           case Some(authReq) =>
-            service(AuthedRequest(authReq, r)).getOrElse(Response[F](Status.NotFound))
+            service(AuthedRequest(authReq, r)).getOrElse(Response(Status.NotFound))
           case None => onAuthFailure(r)
         }
         OptionT.liftF(resp)
       }
     }
 
-    def defaultAuthFailure[F[_]](implicit F: Applicative[F]): Request[F] => F[Response[F]] =
-      _ => F.pure(Response[F](Status.Unauthorized))
+    def defaultAuthFailure[F[_]](implicit F: Applicative[F]): Request => F[Response] =
+      _ => F.pure(Response(Status.Unauthorized))
 
     def apply[F[_], Err, T](
-        authUser: Kleisli[F, Request[F], Either[Err, T]],
+        authUser: Kleisli[F, Request, Either[Err, T]],
         onFailure: AuthedRoutes[Err, F]
     )(implicit F: Monad[F]): AuthMiddleware[F, T] =
       (routes: AuthedRoutes[T, F]) =>
-        Kleisli { (req: Request[F]) =>
+        Kleisli { (req: Request) =>
           OptionT {
             authUser(req).flatMap {
               case Left(err) => onFailure(AuthedRequest(err, req)).value
@@ -127,14 +127,12 @@ package object server {
   private[this] val messageFailureLogger = getLogger("org.http4s.server.message-failures")
   private[this] val serviceErrorLogger = getLogger("org.http4s.server.service-errors")
 
-  type ServiceErrorHandler[F[_]] = Request[F] => PartialFunction[Throwable, F[Response[F]]]
+  type ServiceErrorHandler[F[_]] = Request => PartialFunction[Throwable, IO[Response]]
 
-  def DefaultServiceErrorHandler[F[_]](
-      implicit F: Monad[F]): Request[F] => PartialFunction[Throwable, F[Response[F]]] =
+  def DefaultServiceErrorHandler: Request => PartialFunction[Throwable, IO[Response]] =
     inDefaultServiceErrorHandler[F, F]
 
-  def inDefaultServiceErrorHandler[F[_], G[_]](
-      implicit F: Monad[F]): Request[G] => PartialFunction[Throwable, F[Response[G]]] = req => {
+  def inDefaultServiceErrorHandler: Request => PartialFunction[Throwable, IO[Response]] = req => {
     case mf: MessageFailure =>
       messageFailureLogger.debug(mf)(
         s"""Message failure handling request: ${req.method} ${req.pathInfo} from ${req.remoteAddr

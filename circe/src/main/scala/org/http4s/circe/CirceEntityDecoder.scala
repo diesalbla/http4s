@@ -8,7 +8,7 @@ import org.http4s.EntityDecoder
   * Derive [[EntityDecoder]] if implicit [[Decoder]] is in the scope without need to explicitly call `jsonOf`
   */
 trait CirceEntityDecoder {
-  implicit def circeEntityDecoder[F[_]: Sync, A: Decoder]: EntityDecoder[F, A] = jsonOf[F, A]
+  implicit def circeEntityDecoder[F[_]: Sync, A: Decoder]: EntityDecoder[A] = jsonOf[F, A]
 }
 
 object CirceEntityDecoder extends CirceEntityDecoder

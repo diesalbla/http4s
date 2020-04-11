@@ -37,13 +37,13 @@ package object oauth1 {
     * __WARNING:__ POST requests with application/x-www-form-urlencoded bodies
     *            will be entirely buffered due to signing requirements. */
   def signRequest[F[_]](
-      req: Request[F],
+      req: Request,
       consumer: Consumer,
       callback: Option[Uri],
       verifier: Option[String],
       token: Option[Token])(
       implicit F: MonadError[F, Throwable],
-      W: EntityDecoder[F, UrlForm]): F[Request[F]] =
+      W: EntityDecoder[UrlForm]): F[Request] =
     getUserParams(req).map {
       case (req, params) =>
         val auth = genAuthHeader(req.method, req.uri, params, consumer, callback, verifier, token)
@@ -51,7 +51,7 @@ package object oauth1 {
     }
 
   def signRequest[F[_]](
-      req: Request[F],
+      req: Request,
       consumer: ProtocolParameter.Consumer,
       token: Option[ProtocolParameter.Token],
       realm: Option[Realm],
@@ -61,7 +61,7 @@ package object oauth1 {
       nonceGenerator: F[Nonce],
       callback: Option[Callback] = None,
       verifier: Option[Verifier] = None
-  )(implicit F: MonadError[F, Throwable], W: EntityDecoder[F, UrlForm]): F[Request[F]] =
+  )(implicit F: MonadError[F, Throwable], W: EntityDecoder[UrlForm]): F[Request] =
     for {
       (req, params) <- getUserParams(req)
       auth <- genAuthHeader(
@@ -214,9 +214,9 @@ package object oauth1 {
   private[oauth1] def encode(str: String): String =
     Uri.encode(str, spaceIsPlus = false, toSkip = Uri.Unreserved)
 
-  private[oauth1] def getUserParams[F[_]](req: Request[F])(
+  private[oauth1] def getUserParams[F[_]](req: Request)(
       implicit F: MonadError[F, Throwable],
-      W: EntityDecoder[F, UrlForm]): F[(Request[F], immutable.Seq[(String, String)])] = {
+      W: EntityDecoder[UrlForm]): F[(Request, immutable.Seq[(String, String)])] = {
     val qparams = req.uri.query.pairs.map { case (k, ov) => (k, ov.getOrElse("")) }
 
     req.contentType match {

@@ -22,7 +22,7 @@ object Caching {
     * This is a best attempt, many implementors of caching have done so differently.
     */
   def `no-store`[G[_]: Monad: Clock, F[_], A](
-      http: Kleisli[G, A, Response[F]]): Kleisli[G, A, Response[F]] =
+      http: Kleisli[G, A, Response]): Kleisli[G, A, Response] =
     Kleisli { (a: A) =>
       for {
         resp <- http(a)
@@ -35,7 +35,7 @@ object Caching {
     */
   def `no-store-response`[G[_]]: PartiallyAppliedNoStoreCache[G] =
     new PartiallyAppliedNoStoreCache[G] {
-      def apply[F[_]](resp: Response[F])(implicit M: Monad[G], C: Clock[G]): G[Response[F]] =
+      def apply[F[_]](resp: Response)(implicit M: Monad[G], C: Clock[G]): G[Response] =
         HttpDate.current[G].map(now => resp.putHeaders(HDate(now) :: noStoreStaticHeaders: _*))
     }
 
@@ -142,7 +142,7 @@ object Caching {
       statusToSetOn: Status => Boolean,
       http: Http[G, F]
   ): Http[G, F] =
-    Kleisli { (req: Request[F]) =>
+    Kleisli { (req: Request) =>
       for {
         resp <- http(req)
         out <- if (methodToSetOn(req.method) && statusToSetOn(resp.status)) {
@@ -174,7 +174,7 @@ object Caching {
     }
     new PartiallyAppliedCache[G] {
       override def apply[F[_]](
-          resp: Response[F])(implicit M: MonadError[G, Throwable], C: Clock[G]): G[Response[F]] =
+          resp: Response)(implicit M: MonadError[G, Throwable], C: Clock[G]): G[Response] =
         for {
           now <- HttpDate.current[G]
           expires <- HttpDate
@@ -198,11 +198,11 @@ object Caching {
 
   trait PartiallyAppliedCache[G[_]] {
     def apply[F[_]](
-        resp: Response[F])(implicit M: MonadError[G, Throwable], C: Clock[G]): G[Response[F]]
+        resp: Response)(implicit M: MonadError[G, Throwable], C: Clock[G]): G[Response]
   }
 
   trait PartiallyAppliedNoStoreCache[G[_]] {
-    def apply[F[_]](resp: Response[F])(implicit M: Monad[G], C: Clock[G]): G[Response[F]]
+    def apply[F[_]](resp: Response)(implicit M: Monad[G], C: Clock[G]): G[Response]
   }
 
 }

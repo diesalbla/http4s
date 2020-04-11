@@ -8,10 +8,10 @@ import org.http4s.headers._
 
 package object authentication {
   def challenged[F[_], A](
-      challenge: Kleisli[F, Request[F], Either[Challenge, AuthedRequest[F, A]]])(
+      challenge: Kleisli[F, Request, Either[Challenge, AuthedRequest[F, A]]])(
       routes: AuthedRoutes[A, F])(implicit F: Sync[F]): HttpRoutes[F] =
     Kleisli { req =>
-      OptionT[F, Response[F]] {
+      OptionT[F, Response] {
         F.flatMap(challenge(req)) {
           case Left(challenge) => F.pure(Some(unauthorized(challenge)))
           case Right(authedRequest) => routes(authedRequest).value
@@ -19,6 +19,6 @@ package object authentication {
       }
     }
 
-  private[this] def unauthorized[F[_]](challenge: Challenge): Response[F] =
+  private[this] def unauthorized[F[_]](challenge: Challenge): Response =
     Response(Status.Unauthorized).putHeaders(`WWW-Authenticate`(challenge))
 }

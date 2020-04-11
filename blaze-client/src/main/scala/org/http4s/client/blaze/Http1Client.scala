@@ -51,6 +51,6 @@ object Http1Client {
   }
 
   def stream[F[_]](config: BlazeClientConfig = BlazeClientConfig.defaultConfig)(
-      implicit F: ConcurrentEffect[F]): Stream[F, Client[F]] =
+      implicit F: ConcurrentEffect[F]): Stream[IO, Client[F]] =
     Stream.resource(resource(config))
 }

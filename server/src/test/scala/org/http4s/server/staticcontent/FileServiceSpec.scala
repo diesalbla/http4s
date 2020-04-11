@@ -21,25 +21,25 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
       val app = TranslateUri("/foo")(routes).orNotFound
 
       {
-        val req = Request[IO](uri = uri("/foo/testresource.txt"))
+        val req = Request(uri = uri("/foo/testresource.txt"))
         app(req) must returnBody(testResource)
         app(req) must returnStatus(Status.Ok)
       }
 
       {
-        val req = Request[IO](uri = uri("/testresource.txt"))
+        val req = Request(uri = uri("/testresource.txt"))
         app(req) must returnStatus(Status.NotFound)
       }
     }
 
     "Return a 200 Ok file" in {
-      val req = Request[IO](uri = uri("/testresource.txt"))
+      val req = Request(uri = uri("/testresource.txt"))
       routes.orNotFound(req) must returnBody(testResource)
       routes.orNotFound(req) must returnStatus(Status.Ok)
     }
 
     "Decodes path segments" in {
-      val req = Request[IO](uri = uri("/space+truckin%27.txt"))
+      val req = Request(uri = uri("/space+truckin%27.txt"))
       routes.orNotFound(req) must returnStatus(Status.Ok)
     }
 
@@ -54,7 +54,7 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
       val file = Paths.get(defaultSystemPath).resolve(relativePath).toFile
       file.exists() must beTrue
       val uri = Uri.unsafeFromString("/path-prefix/" + relativePath)
-      val req = Request[IO](uri = uri)
+      val req = Request(uri = uri)
       s0.orNotFound(req) must returnStatus(Status.Ok)
     }
 
@@ -65,7 +65,7 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
       file.exists() must beTrue
 
       val uri = Uri.unsafeFromString("/" + relativePath)
-      val req = Request[IO](uri = uri)
+      val req = Request(uri = uri)
       val s0 = fileService(
         FileService.Config[IO](
           systemPath = systemPath.toString,
@@ -80,7 +80,7 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
       file.exists() must beTrue
 
       val uri = Uri.unsafeFromString("/" + relativePath)
-      val req = Request[IO](uri = uri)
+      val req = Request(uri = uri)
       routes.orNotFound(req) must returnStatus(Status.BadRequest)
     }
 
@@ -90,7 +90,7 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
       file.exists() must beTrue
 
       val uri = Uri.unsafeFromString("/test" + relativePath)
-      val req = Request[IO](uri = uri)
+      val req = Request(uri = uri)
       val s0 = fileService(
         FileService.Config[IO](
           systemPath = Paths.get(defaultSystemPath).resolve("test").toString,
@@ -105,7 +105,7 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
       file.exists() must beTrue
 
       val uri = Uri.unsafeFromString("/prefix" + relativePath)
-      val req = Request[IO](uri = uri)
+      val req = Request(uri = uri)
       val s0 = fileService(
         FileService.Config[IO](
           systemPath = defaultSystemPath,
@@ -121,7 +121,7 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
       file.exists() must beTrue
 
       val uri = Uri.unsafeFromString("///" + absPath)
-      val req = Request[IO](uri = uri)
+      val req = Request(uri = uri)
       routes.orNotFound(req) must returnStatus(Status.BadRequest)
     }
 
@@ -134,13 +134,13 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
       val bytes = Chunk.bytes(Files.readAllBytes(path))
 
       val uri = Uri.unsafeFromString("/" + relativePath)
-      val req = Request[IO](uri = uri)
+      val req = Request(uri = uri)
       routes.orNotFound(req) must returnStatus(Status.Ok)
       routes.orNotFound(req) must returnBody(bytes)
     }
 
     "Return index.html if request points to a directory" in {
-      val req = Request[IO](uri = uri("/testDir/"))
+      val req = Request(uri = uri("/testDir/"))
       val rb = runReq(req)
 
       rb._2.as[String] must returnValue("<html>Hello!</html>")
@@ -148,20 +148,20 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
     }
 
     "Not find missing file" in {
-      val req = Request[IO](uri = uri("/missing.txt"))
+      val req = Request(uri = uri("/missing.txt"))
       routes.orNotFound(req) must returnStatus(Status.NotFound)
     }
 
     "Return a 206 PartialContent file" in {
       val range = headers.Range(4)
-      val req = Request[IO](uri = uri("/testresource.txt")).withHeaders(range)
+      val req = Request(uri = uri("/testresource.txt")).withHeaders(range)
       routes.orNotFound(req) must returnStatus(Status.PartialContent)
       routes.orNotFound(req) must returnBody(Chunk.bytes(testResource.toArray.splitAt(4)._2))
     }
 
     "Return a 206 PartialContent file" in {
       val range = headers.Range(-4)
-      val req = Request[IO](uri = uri("/testresource.txt")).withHeaders(range)
+      val req = Request(uri = uri("/testresource.txt")).withHeaders(range)
       routes.orNotFound(req) must returnStatus(Status.PartialContent)
       routes.orNotFound(req) must returnBody(
         Chunk.bytes(testResource.toArray.splitAt(testResource.size - 4)._2))
@@ -169,7 +169,7 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
 
     "Return a 206 PartialContent file" in {
       val range = headers.Range(2, 4)
-      val req = Request[IO](uri = uri("/testresource.txt")).withHeaders(range)
+      val req = Request(uri = uri("/testresource.txt")).withHeaders(range)
       routes.orNotFound(req) must returnStatus(Status.PartialContent)
       routes.orNotFound(req) must returnBody(Chunk.bytes(testResource.toArray.slice(2, 4 + 1))) // the end number is inclusive in the Range header
     }
@@ -183,7 +183,7 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
         headers.Range(-200)
       )
       val size = new File(getClass.getResource("/testresource.txt").toURI).length
-      val reqs = ranges.map(r => Request[IO](uri = uri("/testresource.txt")).withHeaders(r))
+      val reqs = ranges.map(r => Request(uri = uri("/testresource.txt")).withHeaders(r))
       forall(reqs) { req =>
         routes.orNotFound(req) must returnStatus(Status.RangeNotSatisfiable)
         routes.orNotFound(req) must returnValue(
@@ -192,18 +192,18 @@ class FileServiceSpec extends Http4sSpec with StaticContentShared with Http4sLeg
     }
 
     "doesn't crash on /" in {
-      routes.orNotFound(Request[IO](uri = uri("/"))) must returnStatus(Status.NotFound)
+      routes.orNotFound(Request(uri = uri("/"))) must returnStatus(Status.NotFound)
     }
 
     "handle a relative system path" in {
       val s = fileService(FileService.Config[IO](".", blocker = testBlocker))
       Paths.get(".").resolve("build.sbt").toFile.exists() must beTrue
-      s.orNotFound(Request[IO](uri = uri("/build.sbt"))) must returnStatus(Status.Ok)
+      s.orNotFound(Request(uri = uri("/build.sbt"))) must returnStatus(Status.Ok)
     }
 
     "404 if system path is not found" in {
       val s = fileService(FileService.Config[IO]("./does-not-exist", blocker = testBlocker))
-      s.orNotFound(Request[IO](uri = uri("/build.sbt"))) must returnStatus(Status.NotFound)
+      s.orNotFound(Request(uri = uri("/build.sbt"))) must returnStatus(Status.NotFound)
     }
   }
 }

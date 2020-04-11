@@ -104,7 +104,7 @@ private[http4s] class Http4sWSStage[F[_]](
     *
     * @return
     */
-  def inputstream: Stream[F, WebSocketFrame] =
+  def inputstream: Stream[IO, WebSocketFrame] =
     Stream.repeatEval(handleRead())
 
   //////////////////////// Startup and Shutdown ////////////////////////
