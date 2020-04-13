@@ -4,7 +4,7 @@ weight: 110
 title: The http4s DSL
 ---
 
-Recall from earlier that an `HttpRoutes[F]` is just a type alias for
+Recall from earlier that an `HttpRoutes` is just a type alias for
 `Kleisli[OptionT[F, *], Request, Response]`.  This provides a minimal
 foundation for declaring services and executing them on blaze or a
 servlet container.  While this foundation is composable, it is not
@@ -43,7 +43,7 @@ implicit val timer : Timer[IO] = IO.timer(scala.concurrent.ExecutionContext.glob
 ```
 
 The central concept of http4s-dsl is pattern matching.  An
-`HttpRoutes[F]` is declared as a simple series of case statements.  Each
+`HttpRoutes` is declared as a simple series of case statements.  Each
 case statement attempts to match and optionally extract from an
 incoming `Request`.  The code associated with the first matching case
 is used to generate a `F[Response]`.
@@ -63,7 +63,7 @@ val service = HttpRoutes.of[IO] {
 
 ## Testing the Service
 
-One beautiful thing about the `HttpRoutes[F]` model is that we don't
+One beautiful thing about the `HttpRoutes` model is that we don't
 need a server to test our route.  We can construct our own request
 and experiment directly in the REPL.
 
@@ -79,7 +79,7 @@ be an asynchronous operation with side effects, such as invoking
 another web service or querying a database, or maybe both.  Operating
 in a `F` gives us control over the sequencing of operations and
 lets us reason about our code like good functional programmers.  It is
-the `HttpRoutes[F]`'s job to describe the task, and the server's job to
+the `HttpRoutes`'s job to describe the task, and the server's job to
 run it.
 
 But here in the REPL, it's up to us to run it:

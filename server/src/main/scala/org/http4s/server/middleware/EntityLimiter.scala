@@ -13,8 +13,8 @@ object EntityLimiter {
 
   val DefaultMaxEntitySize: Long = 2L * 1024L * 1024L // 2 MB default
 
-  def apply[F[_], G[_], B](http: Kleisli[F, Request[G], B], limit: Long = DefaultMaxEntitySize)(
-      implicit G: ApplicativeError[G, Throwable]): Kleisli[F, Request[G], B] =
+  def apply[F[_], G[_], B](http: Kleisli[F, Request, B], limit: Long = DefaultMaxEntitySize)(
+      implicit G: ApplicativeError[G, Throwable]): Kleisli[F, Request, B] =
     Kleisli { req =>
       http(req.withBodyStream(req.body.through(takeLimited(limit))))
     }

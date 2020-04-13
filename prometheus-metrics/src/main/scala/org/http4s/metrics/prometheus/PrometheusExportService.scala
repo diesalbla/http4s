@@ -15,7 +15,7 @@ import org.http4s._
  * metrics for, allowing custom metric registration.
  */
 final class PrometheusExportService[F[_]: Sync] private (
-    val routes: HttpRoutes[F],
+    val routes: HttpRoutes,
     val collectorRegistry: CollectorRegistry
 )
 
@@ -38,7 +38,7 @@ object PrometheusExportService {
       }
       .map(Response(Status.Ok).withEntity(_))
 
-  def service[F[_]: Sync](collectorRegistry: CollectorRegistry): HttpRoutes[F] =
+  def service[F[_]: Sync](collectorRegistry: CollectorRegistry): HttpRoutes =
     HttpRoutes.of[F] {
       case req if req.method == Method.GET && req.pathInfo == "/metrics" =>
         generateResponse(collectorRegistry)

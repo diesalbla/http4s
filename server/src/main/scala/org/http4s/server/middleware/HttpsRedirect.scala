@@ -21,7 +21,7 @@ import org.log4s.getLogger
 object HttpsRedirect {
   private[HttpsRedirect] val logger = getLogger
 
-  def apply[F[_], G[_]](http: Http[F, G])(implicit F: Applicative[F]): Http[F, G] =
+  def apply[F[_], G[_]](http: Http)(implicit F: Applicative[F]): Http =
     Kleisli { req =>
       (req.headers.get(`X-Forwarded-Proto`), req.headers.get(Host)) match {
         case (Some(proto), Some(host)) if Scheme.fromString(proto.value).contains(Scheme.http) =>
@@ -29,7 +29,7 @@ object HttpsRedirect {
           val authority = Authority(host = RegName(host.value))
           val location = req.uri.copy(scheme = Some(Scheme.https), authority = Some(authority))
           val headers = Headers(Location(location) :: `Content-Type`(MediaType.text.xml) :: Nil)
-          val response = Response[G](status = MovedPermanently, headers = headers)
+          val response = Response(status = MovedPermanently, headers = headers)
           response.pure[F]
 
         case _ =>

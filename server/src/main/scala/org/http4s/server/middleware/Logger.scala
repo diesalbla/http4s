@@ -24,7 +24,7 @@ object Logger {
       fk: F ~> G,
       redactHeadersWhen: CaseInsensitiveString => Boolean = Headers.SensitiveHeaders.contains,
       logAction: Option[String => F[Unit]] = None
-  )(http: Http[G, F])(implicit G: Bracket[G, Throwable], F: Concurrent[F]): Http[G, F] = {
+  )(http: Http)(implicit G: Bracket[G, Throwable], F: Concurrent[F]): Http = {
     val log: String => F[Unit] = logAction.getOrElse { s =>
       Sync[F].delay(logger.info(s))
     }
@@ -46,7 +46,7 @@ object Logger {
       logBody: Boolean,
       redactHeadersWhen: CaseInsensitiveString => Boolean = Headers.SensitiveHeaders.contains,
       logAction: Option[String => F[Unit]] = None
-  )(httpRoutes: HttpRoutes[F]): HttpRoutes[F] =
+  )(httpRoutes: HttpRoutes): HttpRoutes =
     apply(logHeaders, logBody, OptionT.liftK[F], redactHeadersWhen, logAction)(httpRoutes)
 
   def logMessage[F[_], A <: Message](message: A)(

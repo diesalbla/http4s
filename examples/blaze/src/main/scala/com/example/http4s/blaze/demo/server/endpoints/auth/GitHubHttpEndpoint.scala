@@ -13,7 +13,7 @@ class GitHubHttpEndpoint[F[_]](gitHubService: GitHubService[F])(implicit F: Sync
   object CodeQuery extends QueryParamDecoderMatcher[String]("code")
   object StateQuery extends QueryParamDecoderMatcher[String]("state")
 
-  val service: HttpRoutes[F] = HttpRoutes.of {
+  val service: HttpRoutes = HttpRoutes.of {
     case GET -> Root / ApiVersion / "github" =>
       Ok(gitHubService.authorize)
 

@@ -22,7 +22,7 @@ object ExampleApp {
 }
 
 case class ExampleRoutes[F[_]: Sync]() extends Http4sDsl[F] {
-  val routes: HttpRoutes[F] =
+  val routes: HttpRoutes =
     HttpRoutes.of[F] {
       case GET -> Root / "ping" => Ok("ping")
     }

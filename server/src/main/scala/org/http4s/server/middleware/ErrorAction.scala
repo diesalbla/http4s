@@ -8,18 +8,18 @@ import org.http4s._
 
 object ErrorAction {
   def apply[F[_]: ApplicativeError[*[_], Throwable], G[_], B](
-      k: Kleisli[F, Request[G], B],
-      f: (Request[G], Throwable) => F[Unit]
-  ): Kleisli[F, Request[G], B] =
+      k: Kleisli[F, Request, B],
+      f: (Request, Throwable) => F[Unit]
+  ): Kleisli[F, Request, B] =
     Kleisli { req =>
       k.run(req).onError { case e => f(req, e) }
     }
 
   def log[F[_]: ApplicativeError[*[_], Throwable], G[_], B](
-      http: Kleisli[F, Request[G], B],
+      http: Kleisli[F, Request, B],
       messageFailureLogAction: (Throwable, => String) => F[Unit],
       serviceErrorLogAction: (Throwable, => String) => F[Unit]
-  ): Kleisli[F, Request[G], B] =
+  ): Kleisli[F, Request, B] =
     apply(
       http, {
         case (req, mf: MessageFailure) =>

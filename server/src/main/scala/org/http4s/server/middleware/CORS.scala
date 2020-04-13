@@ -41,11 +41,11 @@ object CORS {
     * based on information in CORS config.
     * Currently, you cannot make permissions depend on request details
     */
-  def apply[F[_], G[_]](http: Http[F, G], config: CORSConfig = DefaultCORSConfig)(
-      implicit F: Applicative[F]): Http[F, G] =
+  def apply[F[_], G[_]](http: Http, config: CORSConfig = DefaultCORSConfig)(
+      implicit F: Applicative[F]): Http =
     Kleisli { req =>
       // In the case of an options request we want to return a simple response with the correct Headers set.
-      def createOptionsResponse(origin: Header, acrm: Header): Response[G] =
+      def createOptionsResponse(origin: Header, acrm: Header): Response =
         corsHeaders(origin.value, acrm.value, isPreflight = true)(Response())
 
       def methodBasedHeader(isPreflight: Boolean) =
@@ -54,14 +54,14 @@ object CORS {
         else
           config.exposedHeaders.map(headerFromStrings("Access-Control-Expose-Headers", _))
 
-      def varyHeader(response: Response[G]): Response[G] =
+      def varyHeader(response: Response): Response =
         response.headers.get(CaseInsensitiveString("Vary")) match {
           case None => response.putHeaders(defaultVaryHeader)
           case _ => response
         }
 
       def corsHeaders(origin: String, acrm: String, isPreflight: Boolean)(
-          resp: Response[G]): Response[G] = {
+          resp: Response): Response = {
         val withMethodBasedHeader = methodBasedHeader(isPreflight)
           .fold(resp)(h => resp.putHeaders(h))
 

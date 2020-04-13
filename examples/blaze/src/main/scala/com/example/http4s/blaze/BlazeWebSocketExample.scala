@@ -20,7 +20,7 @@ object BlazeWebSocketExample extends IOApp {
 
 class BlazeWebSocketExampleApp[F[_]](implicit F: ConcurrentEffect[F], timer: Timer[F])
     extends Http4sDsl[F] {
-  def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+  def routes: HttpRoutes = HttpRoutes.of[F] {
     case GET -> Root / "hello" =>
       Ok("Hello world.")
 

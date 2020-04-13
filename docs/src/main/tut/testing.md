@@ -35,7 +35,7 @@ trait UserRepo[F[_]] {
 
 def service[F[_]](repo: UserRepo[F])(
       implicit F: Effect[F]
-): HttpRoutes[F] = HttpRoutes.of[F] {
+): HttpRoutes = HttpRoutes.of[F] {
   case GET -> Root / "user" / id =>
     repo.find(id).map {
       case Some(user) => Response(status = Status.Ok).withEntity(user.asJson)

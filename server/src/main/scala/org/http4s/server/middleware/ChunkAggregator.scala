@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
 
 object ChunkAggregator {
   def apply[F[_]: FlatMap, G[_]: Sync, A](f: G ~> F)(
-      http: Kleisli[F, A, Response[G]]): Kleisli[F, A, Response[G]] =
+      http: Kleisli[F, A, Response]): Kleisli[F, A, Response] =
     http.flatMapF { response =>
       f(
         response.body.chunks.compile.toVector
@@ -25,7 +25,7 @@ object ChunkAggregator {
           })
     }
 
-  def httpRoutes[F[_]: Sync](httpRoutes: HttpRoutes[F]): HttpRoutes[F] =
+  def httpRoutes[F[_]: Sync](httpRoutes: HttpRoutes): HttpRoutes =
     apply(OptionT.liftK[F])(httpRoutes)
 
   def httpApp[F[_]: Sync](httpApp: HttpApp[F]): HttpApp[F] =

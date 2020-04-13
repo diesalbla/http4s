@@ -21,13 +21,13 @@ class ExampleService(blocker: Blocker)(implicit cs: ContextShift[IO])
     extends Http4sDsl[IO] {
   // A Router can mount multiple services to prefixes.  The request is passed to the
   // service with the longest matching prefix.
-  def routes(implicit timer: Timer[F]): HttpRoutes[F] =
+  def routes(implicit timer: Timer[F]): HttpRoutes =
     Router[F](
       "" -> rootRoutes,
       "/auth" -> authRoutes
     )
 
-  def rootRoutes(implicit timer: Timer[F]): HttpRoutes[F] =
+  def rootRoutes(implicit timer: Timer[F]): HttpRoutes =
     HttpRoutes.of[F] {
       case GET -> Root =>
         // Supports Play Framework template -- see src/main/twirl.
@@ -186,7 +186,7 @@ class ExampleService(blocker: Blocker)(implicit cs: ContextShift[IO])
   // AuthedRoutes to an authentication store.
   val basicAuth: AuthMiddleware[F, String] = BasicAuth(realm, authStore)
 
-  def authRoutes: HttpRoutes[F] =
+  def authRoutes: HttpRoutes =
     basicAuth(AuthedRoutes.of[String, F] {
       // AuthedRoutes look like HttpRoutes, but the user is extracted with `as`.
       case GET -> Root / "protected" as user =>

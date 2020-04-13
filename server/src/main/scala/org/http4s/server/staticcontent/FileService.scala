@@ -50,7 +50,7 @@ object FileService {
   }
 
   /** Make a new [[org.http4s.HttpRoutes]] that serves static files. */
-  private[staticcontent] def apply[F[_]](config: Config[F])(implicit F: Sync[F]): HttpRoutes[F] = {
+  private[staticcontent] def apply[F[_]](config: Config[F])(implicit F: Sync[F]): HttpRoutes = {
     object BadTraversal extends Exception with NoStackTrace
     Try(Paths.get(config.systemPath).toRealPath()) match {
       case Success(rootPath) =>

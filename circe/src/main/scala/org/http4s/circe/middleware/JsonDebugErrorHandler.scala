@@ -32,12 +32,12 @@ object JsonDebugErrorHandler {
           messageFailureLogger.debug(mf)(
             s"""Message failure handling request: ${req.method} ${req.pathInfo} from ${req.remoteAddr
               .getOrElse("<unknown>")}""")
-          val firstResp = mf.toHttpResponse[G](req.httpVersion)
+          val firstResp = mf.toHttpResponse(req.httpVersion)
           Response(
             status = firstResp.status,
             httpVersion = firstResp.httpVersion,
             headers = firstResp.headers.redactSensitive(redactWhen)
-          ).withEntity(JsonErrorHandlerResponse[G](req, mf)).pure[F]
+          ).withEntity(JsonErrorHandlerResponse(req, mf)).pure[F]
         case t =>
           serviceErrorLogger.error(t)(
             s"""Error servicing request: ${req.method} ${req.pathInfo} from ${req.remoteAddr
@@ -50,7 +50,7 @@ object JsonDebugErrorHandler {
               Connection("close".ci) ::
                 Nil
             ))
-            .withEntity(JsonErrorHandlerResponse[G](req, t))
+            .withEntity(JsonErrorHandlerResponse(req, t))
             .pure[F]
       }
   }
@@ -58,7 +58,7 @@ object JsonDebugErrorHandler {
   private final case class JsonErrorHandlerResponse(req: Request, caught: Throwable)
 
   private object JsonErrorHandlerResponse {
-    def entEnc[F[_], G[_]](redactWhen: CaseInsensitiveString => Boolean): EntityEncoder[JsonErrorHandlerResponse[G]] =
+    def entEnc[F[_], G[_]](redactWhen: CaseInsensitiveString => Boolean): EntityEncoder[JsonErrorHandlerResponse] =
       jsonEncoderOf(encoder(redactWhen))
 
     def encoder(redactWhen: CaseInsensitiveString => Boolean): Encoder[JsonErrorHandlerResponse] =

@@ -41,13 +41,13 @@ object Metrics {
       classifierF: Request => Option[String] = { (_: Request) =>
         None
       }
-  )(routes: HttpRoutes[F])(implicit F: Sync[F], clock: Clock[F]): HttpRoutes[F] =
+  )(routes: HttpRoutes)(implicit F: Sync[F], clock: Clock[F]): HttpRoutes =
     Kleisli(
       metricsService[F](ops, routes, emptyResponseHandler, errorResponseHandler, classifierF)(_))
 
   private def metricsService[F[_]: Sync](
       ops: MetricsOps[F],
-      routes: HttpRoutes[F],
+      routes: HttpRoutes,
       emptyResponseHandler: Option[Status],
       errorResponseHandler: Throwable => Option[Status],
       classifierF: Request => Option[String]

@@ -70,21 +70,21 @@ object HttpMethodOverrider {
     * @param http [[Http]] to transform
     * @param config http method overrider config
     */
-  def apply[F[_], G[_]](http: Http[F, G], config: HttpMethodOverriderConfig[F, G])(
+  def apply[F[_], G[_]](http: Http, config: HttpMethodOverriderConfig[F, G])(
       implicit F: Monad[F],
-      S: Sync[G]): Http[F, G] = {
+      S: Sync[G]): Http = {
     val parseMethod = (m: String) => Method.fromString(m.toUpperCase)
 
-    val processRequestWithOriginalMethod = (req: Request[G]) => http(req)
+    val processRequestWithOriginalMethod = (req: Request) => http(req)
 
     def processRequestWithMethod(
-        req: Request[G],
-        parseResult: ParseResult[Method]): F[Response[G]] = parseResult match {
-      case Left(_) => F.pure(Response[G](Status.BadRequest))
+        req: Request,
+        parseResult: ParseResult[Method]): F[Response] = parseResult match {
+      case Left(_) => F.pure(Response(Status.BadRequest))
       case Right(om) => http(updateRequestWithMethod(req, om)).map(updateVaryHeader)
     }
 
-    def updateVaryHeader(resp: Response[G]): Response[G] = {
+    def updateVaryHeader(resp: Response): Response = {
       val varyHeaderName = CaseInsensitiveString("Vary")
       config.overrideStrategy match {
         case HeaderOverrideStrategy(headerName) =>
@@ -99,12 +99,12 @@ object HttpMethodOverrider {
       }
     }
 
-    def updateRequestWithMethod(req: Request[G], om: Method): Request[G] = {
+    def updateRequestWithMethod(req: Request, om: Method): Request = {
       val attrs = req.attributes.insert(overriddenMethodAttrKey, req.method)
       req.withAttributes(attrs).withMethod(om)
     }
 
-    def getUnsafeOverrideMethod(req: Request[G]): F[Option[String]] =
+    def getUnsafeOverrideMethod(req: Request): F[Option[String]] =
       config.overrideStrategy match {
         case HeaderOverrideStrategy(headerName) => F.pure(req.headers.get(headerName).map(_.value))
         case QueryOverrideStrategy(parameter) => F.pure(req.params.get(parameter))
@@ -119,12 +119,12 @@ object HttpMethodOverrider {
           } yield formFields.flatMap(_.get(field).flatMap(_.uncons.map(_._1)))
       }
 
-    def processRequest(req: Request[G]): F[Response[G]] = getUnsafeOverrideMethod(req).flatMap {
+    def processRequest(req: Request): F[Response] = getUnsafeOverrideMethod(req).flatMap {
       case Some(m: String) => parseMethod.andThen(processRequestWithMethod(req, _)).apply(m)
       case None => processRequestWithOriginalMethod(req)
     }
 
-    Kleisli { (req: Request[G]) =>
+    Kleisli { (req: Request) =>
       config.overridableMethods
         .contains(req.method)
         .guard[Option]

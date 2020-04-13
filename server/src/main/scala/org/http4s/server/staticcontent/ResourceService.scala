@@ -33,7 +33,7 @@ object ResourceService {
 
   /** Make a new [[org.http4s.HttpRoutes]] that serves static files. */
   private[staticcontent] def apply[F[_]](
-      config: Config[F])(implicit F: Sync[F], cs: ContextShift[F]): HttpRoutes[F] = {
+      config: Config[F])(implicit F: Sync[F], cs: ContextShift[F]): HttpRoutes = {
     val basePath = if (config.basePath.isEmpty) "/" else config.basePath
     object BadTraversal extends Exception with NoStackTrace
 

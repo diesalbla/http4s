@@ -37,7 +37,7 @@ trait CookieJar[F[_]] {
   /**
     * Enrich a Request with the cookies available
     */
-  def enrichRequest[G[_]](r: Request[G]): F[Request[G]]
+  def enrichRequest[G[_]](r: Request): F[Request]
 }
 
 /**

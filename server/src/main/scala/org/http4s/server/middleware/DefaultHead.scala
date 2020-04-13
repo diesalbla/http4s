@@ -25,6 +25,5 @@ class DefaultHead(http: Http) extends Http {
 
   private[this] def drainBody(response: Response): Response =
     response.copy(body = response.body.interruptWhen(Stream(true)).drain)
-}
 
 }

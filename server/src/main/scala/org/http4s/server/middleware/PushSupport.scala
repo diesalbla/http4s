@@ -44,7 +44,7 @@ object PushSupport {
       r: Vector[PushLocation],
       req: Request,
       verify: String => Boolean,
-      routes: HttpRoutes[F])(implicit F: Monad[F]): F[Vector[PushResponse]] = {
+      routes: HttpRoutes)(implicit F: Monad[F]): F[Vector[PushResponse]] = {
     val emptyCollect: F[Vector[PushResponse]] = F.pure(Vector.empty[PushResponse])
 
     def fetchAndAdd(facc: F[Vector[PushResponse]], v: PushLocation): F[Vector[PushResponse]] =
@@ -72,8 +72,8 @@ object PushSupport {
     * @return      Transformed route
     */
   def apply[F[_]: Monad](
-      routes: HttpRoutes[F],
-      verify: String => Boolean = _ => true): HttpRoutes[F] = {
+      routes: HttpRoutes,
+      verify: String => Boolean = _ => true): HttpRoutes = {
     def gather(req: Request)(resp: Response): Response =
       resp.attributes
         .lookup(pushLocationKey)

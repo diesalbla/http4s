@@ -16,10 +16,10 @@ object Timeout {
     * @param timeout Finite duration to wait before returning the provided response
     * @param service [[HttpRoutes]] to transform
     */
-  def apply[F[_], G[_], A](timeout: FiniteDuration, timeoutResponse: F[Response[G]])(
-      http: Kleisli[F, A, Response[G]])(
+  def apply[F[_], G[_], A](timeout: FiniteDuration, timeoutResponse: F[Response])(
+      http: Kleisli[F, A, Response])(
       implicit F: Concurrent[F],
-      T: Timer[F]): Kleisli[F, A, Response[G]] =
+      T: Timer[F]): Kleisli[F, A, Response] =
     http.mapF(Concurrent.timeoutTo(_, timeout, timeoutResponse))
 
   /** Transform the service to return a timeout response after the given
@@ -30,9 +30,9 @@ object Timeout {
     * Service Unavailable` response
     * @param service [[HttpRoutes]] to transform
     */
-  def apply[F[_], G[_], A](timeout: FiniteDuration)(http: Kleisli[F, A, Response[G]])(
+  def apply[F[_], G[_], A](timeout: FiniteDuration)(http: Kleisli[F, A, Response])(
       implicit F: Concurrent[F],
       T: Timer[F]
-  ): Kleisli[F, A, Response[G]] =
+  ): Kleisli[F, A, Response] =
     apply(timeout, Response.timeout[G].pure[F])(http)
 }

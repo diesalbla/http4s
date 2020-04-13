@@ -128,7 +128,7 @@ sealed class JettyBuilder[F[_]] private (
       context.addFilter(filterHolder, urlMapping, dispatches)
     })
 
-  def mountService(service: HttpRoutes[F], prefix: String): Self =
+  def mountService(service: HttpRoutes, prefix: String): Self =
     mountHttpApp(service.orNotFound, prefix)
 
   def mountHttpApp(service: HttpApp[F], prefix: String): Self =

@@ -137,7 +137,7 @@ package object server {
       messageFailureLogger.debug(mf)(
         s"""Message failure handling request: ${req.method} ${req.pathInfo} from ${req.remoteAddr
           .getOrElse("<unknown>")}""")
-      mf.toHttpResponse[G](req.httpVersion).pure[F]
+      mf.toHttpResponse(req.httpVersion).pure[F]
     case NonFatal(t) =>
       serviceErrorLogger.error(t)(
         s"""Error servicing request: ${req.method} ${req.pathInfo} from ${req.remoteAddr.getOrElse(

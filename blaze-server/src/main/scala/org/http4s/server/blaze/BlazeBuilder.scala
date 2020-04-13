@@ -143,7 +143,7 @@ class BlazeBuilder[F[_]](
 
   def enableHttp2(enabled: Boolean): Self = copy(http2Support = enabled)
 
-  def mountService(service: HttpRoutes[F], prefix: String): Self = {
+  def mountService(service: HttpRoutes, prefix: String): Self = {
     val prefixedService =
       if (prefix.isEmpty || prefix == "/") service
       else {
@@ -242,4 +242,4 @@ object BlazeBuilder {
     )
 }
 
-private final case class ServiceMount[F[_]](service: HttpRoutes[F], prefix: String)
+private final case class ServiceMount[F[_]](service: HttpRoutes, prefix: String)

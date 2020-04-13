@@ -20,14 +20,14 @@ object VirtualHost {
     * filled in, if possible, using the request Uri or knowledge of the
     * security of the underlying transport protocol.
     */
-  final case class HostService[F[_], G[_]](http: Http[F, G], p: Host => Boolean)
+  final case class HostService[F[_], G[_]](http: Http, p: Host => Boolean)
 
   /** Create a [[HostService]] that will match based on the exact host string
     * (discounting case) and port, if the port is given. If the port is not
     * given, it is ignored.
     */
   def exact[F[_], G[_]](
-      http: Http[F, G],
+      http: Http,
       requestHost: String,
       port: Option[Int] = None): HostService[F, G] =
     HostService(http, h => h.host.equalsIgnoreCase(requestHost) && (port.isEmpty || port == h.port))
@@ -37,7 +37,7 @@ object VirtualHost {
     * given. If the port is not given, it is ignored.
     */
   def wildcard[F[_], G[_]](
-      http: Http[F, G],
+      http: Http,
       wildcardHost: String,
       port: Option[Int] = None): HostService[F, G] =
     regex(http, wildcardHost.replace("*", "\\w+").replace(".", "\\.").replace("-", "\\-"), port)
@@ -47,7 +47,7 @@ object VirtualHost {
     * is given. If the port is not given, it is ignored.
     */
   def regex[F[_], G[_]](
-      http: Http[F, G],
+      http: Http,
       hostRegex: String,
       port: Option[Int] = None): HostService[F, G] = {
     val r = hostRegex.r
@@ -58,11 +58,11 @@ object VirtualHost {
 
   def apply[F[_], G[_]](first: HostService[F, G], rest: HostService[F, G]*)(
       implicit F: Applicative[F],
-      W: EntityEncoder[G, String]): Http[F, G] =
+      W: EntityEncoder[G, String]): Http =
     Kleisli { req =>
       req.headers
         .get(Host)
-        .fold(F.pure(Response[G](BadRequest).withEntity("Host header required."))) { h =>
+        .fold(F.pure(Response(BadRequest).withEntity("Host header required."))) { h =>
           // Fill in the host port if possible
           val host: Host = h.port match {
             case Some(_) => h
@@ -71,7 +71,7 @@ object VirtualHost {
           }
           (first +: rest).toVector
             .collectFirst { case HostService(s, p) if p(host) => s(req) }
-            .getOrElse(F.pure(Response[G](NotFound).withEntity(s"Host '$host' not found.")))
+            .getOrElse(F.pure(Response(NotFound).withEntity(s"Host '$host' not found.")))
         }
     }
 }

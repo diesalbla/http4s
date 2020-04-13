@@ -13,9 +13,9 @@ import cats.implicits._
   * uri = "/foo/" to match the route.
   */
 object AutoSlash {
-  def apply[F[_], G[_], B](http: Kleisli[F, Request[G], B])(
+  def apply[F[_], G[_], B](http: Kleisli[F, Request, B])(
       implicit F: MonoidK[F],
-      G: Functor[G]): Kleisli[F, Request[G], B] = {
+      G: Functor[G]): Kleisli[F, Request, B] = {
     val _ = G // for binary compatibility in 0.20, remove on master
     Kleisli { req =>
       http(req) <+> {

@@ -12,7 +12,7 @@ import org.http4s.headers.`Cache-Control`
   */
 object StaticHeaders {
   def apply[F[_]: Functor, G[_], A](headers: Headers)(
-      http: Kleisli[F, A, Response[G]]): Kleisli[F, A, Response[G]] =
+      http: Kleisli[F, A, Response]): Kleisli[F, A, Response] =
     Kleisli { req =>
       http(req).map(resp => resp.copy(headers = headers ++ resp.headers))
     }
@@ -20,6 +20,6 @@ object StaticHeaders {
   private val noCacheHeader: Header = `Cache-Control`(NonEmptyList.of(CacheDirective.`no-cache`()))
 
   def `no-cache`[F[_]: Functor, G[_], A](
-      http: Kleisli[F, A, Response[G]]): Kleisli[F, A, Response[G]] =
+      http: Kleisli[F, A, Response]): Kleisli[F, A, Response] =
     StaticHeaders(Headers(noCacheHeader.pure[List]))(http)
 }

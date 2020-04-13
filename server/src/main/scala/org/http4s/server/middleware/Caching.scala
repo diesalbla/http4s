@@ -81,7 +81,7 @@ object Caching {
     */
   def publicCache[G[_]: MonadError[*[_], Throwable]: Clock, F[_]](
       lifetime: Duration,
-      http: Http[G, F]): Http[G, F] =
+      http: Http): Http =
     cache(
       lifetime,
       Either.left(CacheDirective.public),
@@ -106,8 +106,8 @@ object Caching {
     */
   def privateCache[G[_]: MonadError[*[_], Throwable]: Clock, F[_]](
       lifetime: Duration,
-      http: Http[G, F],
-      fieldNames: List[CaseInsensitiveString] = Nil): Http[G, F] =
+      http: Http,
+      fieldNames: List[CaseInsensitiveString] = Nil): Http =
     cache(
       lifetime,
       Either.right(CacheDirective.`private`(fieldNames)),
@@ -135,21 +135,20 @@ object Caching {
     * Note: If set to Duration.Inf, lifetime falls back to
     * 10 years for support of Http1 caches.
     */
-  def cache[G[_]: MonadError[*[_], Throwable]: Clock, F[_]](
+  def cache(
       lifetime: Duration,
       isPublic: Either[CacheDirective.public.type, CacheDirective.`private`],
       methodToSetOn: Method => Boolean,
       statusToSetOn: Status => Boolean,
-      http: Http[G, F]
-  ): Http[G, F] =
-    Kleisli { (req: Request) =>
+      http: Http
+  )(implicit c: Clock[IO]): Http =
+    (req: Request) =>
       for {
         resp <- http(req)
         out <- if (methodToSetOn(req.method) && statusToSetOn(resp.status)) {
-          cacheResponse[G](lifetime, isPublic)(resp)
-        } else resp.pure[G]
+          cacheResponse(lifetime, isPublic)(resp)
+        } else IO.pure(resp)
       } yield out
-    }
 
   // Here as an optimization so we don't recreate durations
   // in cacheResponse #TeamStatic

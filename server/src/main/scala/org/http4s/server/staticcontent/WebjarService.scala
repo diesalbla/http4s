@@ -55,7 +55,7 @@ object WebjarService {
     * @param config The configuration for this service
     * @return The HttpRoutes
     */
-  def apply[F[_]](config: Config[F])(implicit F: Sync[F], cs: ContextShift[F]): HttpRoutes[F] = {
+  def apply[F[_]](config: Config[F])(implicit F: Sync[F], cs: ContextShift[F]): HttpRoutes = {
     object BadTraversal extends Exception with NoStackTrace
     val Root = Paths.get("")
     Kleisli {

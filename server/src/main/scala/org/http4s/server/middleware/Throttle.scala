@@ -89,10 +89,10 @@ object Throttle {
     * @return a task containing the transformed service.
     */
   def apply[F[_], G[_]](amount: Int, per: FiniteDuration)(
-      http: Http[F, G])(implicit F: Sync[F], timer: Clock[F]): F[Http[F, G]] = {
+      http: Http)(implicit F: Sync[F], timer: Clock[F]): F[Http] = {
     val refillFrequency = per / amount.toLong
     val createBucket = TokenBucket.local(amount, refillFrequency)
-    createBucket.map(bucket => apply(bucket, defaultResponse[G] _)(http))
+    createBucket.map(bucket => apply(bucket, defaultResponse _)(http))
   }
 
   def defaultResponse[F[_]](retryAfter: Option[FiniteDuration]): Response = {
@@ -110,8 +110,8 @@ object Throttle {
     */
   def apply[F[_], G[_]](
       bucket: TokenBucket[F],
-      throttleResponse: Option[FiniteDuration] => Response[G] = defaultResponse[G] _)(
-      http: Http[F, G])(implicit F: Monad[F]): Http[F, G] =
+      throttleResponse: Option[FiniteDuration] => Response = defaultResponse _)(
+      http: Http)(implicit F: Monad[F]): Http =
     Kleisli { req =>
       bucket.takeToken.flatMap {
         case TokenAvailable => http(req)

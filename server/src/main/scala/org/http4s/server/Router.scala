@@ -11,7 +11,7 @@ object Router {
     * Defines an [[HttpRoutes]] based on list of mappings.
     * @see define
     */
-  def apply[F[_]: Monad](mappings: (String, HttpRoutes[F])*): HttpRoutes[F] =
+  def apply[F[_]: Monad](mappings: (String, HttpRoutes)*): HttpRoutes =
     define(mappings: _*)(HttpRoutes.empty[F])
 
   /**
@@ -20,8 +20,8 @@ object Router {
     *
     * The mappings are processed in descending order (longest first) of prefix length.
     */
-  def define[F[_]: Monad](mappings: (String, HttpRoutes[F])*)(
-      default: HttpRoutes[F]): HttpRoutes[F] =
+  def define[F[_]: Monad](mappings: (String, HttpRoutes)*)(
+      default: HttpRoutes): HttpRoutes =
     mappings.sortBy(_._1.length).foldLeft(default) {
       case (acc, (prefix, routes)) =>
         val prefixSegments = toSegments(prefix)

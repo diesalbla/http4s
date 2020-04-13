@@ -155,9 +155,6 @@ trait Client[F[_]] {
     * successful */
   def successful(req: F[Request]): F[Boolean]
 
-  @deprecated("Use expect", "0.14")
-  def prepAs[A](req: Request)(implicit d: EntityDecoder[A]): F[A]
-
   /** Submits a GET request, and provides a callback to process the response.
     *
     * @param uri The URI to GET
@@ -176,23 +173,10 @@ trait Client[F[_]] {
   def get[A](s: String)(f: Response => F[A]): F[A]
 
   /**
-    * Submits a GET request and decodes the response.  The underlying HTTP
-    * connection is closed at the completion of the decoding.
-    */
-  @deprecated("Use expect", "0.14")
-  def getAs[A](uri: Uri)(implicit d: EntityDecoder[A]): F[A]
-
-  @deprecated("Use expect", "0.14")
-  def getAs[A](s: String)(implicit d: EntityDecoder[A]): F[A]
-
-  @deprecated("Use expect", "0.14")
-  def prepAs[T](req: F[Request])(implicit d: EntityDecoder[T]): F[T]
-
-  /**
     * Translates the effect type of this client from F to G
     */
   def translate[G[_]: Sync](fk: F ~> G)(gK: G ~> F)(implicit b: Bracket[F, Throwable]): Client[G] =
-    Client((req: Request[G]) =>
+    Client((req: Request) =>
       run(
         req.mapK(gK)
       ).mapK(fk)
@@ -205,25 +189,16 @@ object Client {
     def run(req: Request): Resource[F, Response] = f(req)
   }
 
-  /** Creates a client from the specified service.  Useful for generating
-    * pre-determined responses for requests in testing.
-    *
-    * @param service the service to respond to requests to this client
-    */
-  @deprecated("Use fromHttpApp instead. Call service.orNotFound to turn into an HttpApp.", "0.19")
-  def fromHttpService[F[_]](service: HttpRoutes[F])(implicit F: Sync[F]): Client[F] =
-    fromHttpApp(service.orNotFound)
-
   /** Creates a client from the specified [[HttpApp]].  Useful for
     * generating pre-determined responses for requests in testing.
     *
     * @param app the [[HttpApp]] to respond to requests to this client
     */
-  def fromHttpApp[F[_]](app: HttpApp[F])(implicit F: Sync[F]): Client[F] =
+  def fromHttpApp(app: Http): Client =
     Client { (req: Request) =>
       Resource.suspend {
-        Ref[F].of(false).map { disposed =>
-          def go(stream: Stream[IO, Byte]): Pull[F, Byte, Unit] =
+        Ref[IO].of(false).map { disposed =>
+          def go(stream: Stream[IO, Byte]): Pull[IO, Byte, Unit] =
             stream.pull.uncons.flatMap {
               case Some((chunk, stream)) =>
                 Pull.eval(disposed.get).flatMap {

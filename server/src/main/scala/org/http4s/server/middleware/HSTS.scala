@@ -19,20 +19,20 @@ object HSTS {
     preload = false)
 
   def apply[F[_]: Functor, A, G[_]: Functor](
-      routes: Kleisli[F, A, Response[G]]): Kleisli[F, A, Response[G]] =
+      routes: Kleisli[F, A, Response]): Kleisli[F, A, Response] =
     apply(routes, defaultHSTSPolicy)
 
   def apply[F[_]: Functor, A, G[_]: Functor](
-      http: Kleisli[F, A, Response[G]],
-      header: `Strict-Transport-Security`): Kleisli[F, A, Response[G]] = Kleisli { req =>
+      http: Kleisli[F, A, Response],
+      header: `Strict-Transport-Security`): Kleisli[F, A, Response] = Kleisli { req =>
     http.map(_.putHeaders(header)).apply(req)
   }
 
   def unsafeFromDuration[F[_]: Functor, A, G[_]: Functor](
-      http: Kleisli[F, A, Response[G]],
+      http: Kleisli[F, A, Response],
       maxAge: FiniteDuration = 365.days,
       includeSubDomains: Boolean = true,
-      preload: Boolean = false): Kleisli[F, A, Response[G]] = {
+      preload: Boolean = false): Kleisli[F, A, Response] = {
     val header = `Strict-Transport-Security`.unsafeFromDuration(maxAge, includeSubDomains, preload)
     apply(http, header)
   }

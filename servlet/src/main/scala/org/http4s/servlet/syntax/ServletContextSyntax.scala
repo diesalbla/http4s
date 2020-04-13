@@ -21,7 +21,7 @@ final class ServletContextOps private[syntax] (val self: ServletContext) extends
     */
   def mountService[F[_]: ConcurrentEffect: ContextShift](
       name: String,
-      service: HttpRoutes[F],
+      service: HttpRoutes,
       mapping: String = "/*"): ServletRegistration.Dynamic =
     mountHttpApp(name, service.orNotFound, mapping)
 
